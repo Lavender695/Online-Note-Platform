@@ -1,11 +1,11 @@
-import Sidebar from "../components/layout/home/Sidebar";
-import EdittingBlock from "../components/layout/home/EdittingBlock";
+import Header from "@/components/layout/Header";
+import Main from "@/components/layout/Main";
 
 export default function Home() {
   return (
-    <main className="flex">
-      <Sidebar />
-      <EdittingBlock />
+    <main className="">
+      <Header />
+      <Main />
     </main>
   );
 }

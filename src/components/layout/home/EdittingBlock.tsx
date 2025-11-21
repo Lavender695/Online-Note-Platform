@@ -1,12 +1,12 @@
 import React from 'react'
-import MyEditorPage from '@/features/editor/page'
+import Page from '@/app/editor/page'
 
 type Props = {}
 
 const EdittingBlock = (props: Props) => {
   return (
-    <div className='grow bg-blue-50 h-screen'>
-      <MyEditorPage />
+    <div className='bg-blue-50 h-screen md:w-[82%]'>
+      <Page />
     </div>
   )
 }
