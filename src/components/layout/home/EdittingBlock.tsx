@@ -5,7 +5,7 @@ type Props = {}
 
 const EdittingBlock = (props: Props) => {
   return (
-    <div className='bg-blue-50 h-screen md:w-[82%]'>
+    <div className='h-full overflow-hidden scrollbar-hide'>
       <Page />
     </div>
   )

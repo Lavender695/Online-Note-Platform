@@ -17,8 +17,11 @@ export function PlateEditor() {
 
   return (
     <Plate editor={editor}>
-      <EditorContainer>
-        <Editor variant="demo" />
+      <EditorContainer className="max-w-full overflow-x-hidden scrollbar-hide">
+        <Editor 
+          variant="demo" 
+          className="max-w-full overflow-x-hidden"
+        />
       </EditorContainer>
 
       <SettingsDialog />

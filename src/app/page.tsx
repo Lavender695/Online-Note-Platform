@@ -3,9 +3,11 @@ import Main from "@/components/layout/Main";
 
 export default function Home() {
   return (
-    <main className="">
-      <Header />
+    <div className="min-h-screen">
+      {/* Header is rendered outside of SidebarProvider */}
+      <Header className="relative z-50" />
+      {/* Main contains Sidebar and EdittingBlock */}
       <Main />
-    </main>
+    </div>
   );
 }
