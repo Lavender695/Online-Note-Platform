@@ -113,6 +113,24 @@ function SidebarProvider({
   // This makes it easier to style the sidebar with Tailwind classes.
   const state = open ? "expanded" : "collapsed"
 
+  // Update body class based on sidebar state
+  React.useEffect(() => {
+    if (isMobile) return;
+    
+    const body = document.body;
+    if (state === "expanded") {
+      body.classList.add("sidebar-expanded");
+      body.classList.remove("sidebar-collapsed");
+    } else {
+      body.classList.add("sidebar-collapsed");
+      body.classList.remove("sidebar-expanded");
+    }
+    
+    return () => {
+      body.classList.remove("sidebar-expanded", "sidebar-collapsed");
+    };
+  }, [state, isMobile]);
+
   const contextValue = React.useMemo<SidebarContextProps>(
     () => ({
       state,

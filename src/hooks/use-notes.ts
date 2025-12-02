@@ -28,6 +28,14 @@ const mockNotes: Note[] = [
     created_at: '2024-05-30T09:15:00Z',
     updated_at: '2024-05-30T09:15:00Z',
   },
+  {
+    id: '4',
+    title: '笔记标题4',
+    content: '这是第四个笔记的内容预览，包含更多详细信息。',
+    user_id: 'user1',
+    created_at: '2024-05-30T09:15:00Z',
+    updated_at: '2024-05-30T09:15:00Z',
+  },
 ];
 
 export function useNotes() {
