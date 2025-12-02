@@ -8,19 +8,49 @@ import { Plate, usePlateEditor } from 'platejs/react';
 import { EditorKit } from '@/components/editor-kit';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { Editor, EditorContainer } from '@/components/ui/editor';
+import { Note } from '@/types/note';
 
-export function PlateEditor() {
+type Props = {
+  note?: Note;
+};
+
+export function PlateEditor({ note }: Props) {
+  // Convert note content to editor value
+  const getEditorValue = () => {
+    if (!note) {
+      // Empty editor for new notes
+      return normalizeNodeId([
+        {
+          children: [{ text: '' }],
+          type: 'p',
+        },
+      ]);
+    }
+    
+    // For now, we'll use a simple conversion
+    // In a real app, you'd need to parse the content into the correct format
+    return normalizeNodeId([
+      {
+        children: [{ text: note.title }],
+        type: 'h1',
+      },
+      {
+        children: [{ text: note.content }],
+        type: 'p',
+      },
+    ]);
+  };
+
   const editor = usePlateEditor({
     plugins: EditorKit,
-    value,
+    value: getEditorValue(),
   });
 
   return (
     <Plate editor={editor}>
-      <EditorContainer className="max-w-full overflow-x-hidden scrollbar-hide">
+      <EditorContainer className="relative w-full max-w-full m-0">
         <Editor 
-          variant="demo" 
-          className="max-w-full overflow-x-hidden"
+          className="min-h-[500px] w-full max-w-full overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-b-lg bg-background text-sm"
         />
       </EditorContainer>
 

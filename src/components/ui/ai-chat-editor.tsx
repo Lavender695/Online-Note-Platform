@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useAIChatEditor } from '@platejs/ai/react';
 import { usePlateEditor } from 'platejs/react';
 
-import { BaseEditorKit } from '@/components/editor-base-kit';
+import { BaseEditorKit } from '@/components/plate-kits/editor-base-kit';
 
 import { EditorStatic } from './editor-static';
 

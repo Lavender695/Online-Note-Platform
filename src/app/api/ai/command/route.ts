@@ -3,7 +3,6 @@ import type {
   ToolName,
 } from '@/components/use-chat';
 import type { NextRequest } from 'next/server';
-
 import { createGateway } from '@ai-sdk/gateway';
 import {
   type LanguageModel,
@@ -19,7 +18,7 @@ import { NextResponse } from 'next/server';
 import { type SlateEditor, createSlateEditor, nanoid } from 'platejs';
 import { z } from 'zod';
 
-import { BaseEditorKit } from '@/components/editor-base-kit';
+import { BaseEditorKit } from '@/components/plate-kits/editor-base-kit';
 import { markdownJoinerTransform } from '@/lib/markdown-joiner-transform';
 
 import {

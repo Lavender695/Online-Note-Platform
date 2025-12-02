@@ -58,7 +58,7 @@ import {
   PopoverContent,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { commentPlugin } from '@/components/comment-kit';
+import { commentPlugin } from '@/components/plate-kits/comment-kit';
 
 import { AIChatEditor } from './ai-chat-editor';
 

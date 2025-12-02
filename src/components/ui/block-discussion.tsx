@@ -32,12 +32,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { commentPlugin } from '@/components/comment-kit';
+import { commentPlugin } from '@/components/plate-kits/comment-kit';
 import {
   type TDiscussion,
   discussionPlugin,
-} from '@/components/discussion-kit';
-import { suggestionPlugin } from '@/components/suggestion-kit';
+} from '@/components/plate-kits/discussion-kit';
+import { suggestionPlugin } from '@/components/plate-kits/suggestion-kit';
 
 import {
   BlockSuggestionCard,
