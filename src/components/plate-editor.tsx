@@ -50,7 +50,7 @@ export function PlateEditor({ note }: Props) {
     <Plate editor={editor}>
       <EditorContainer className="relative w-full max-w-full m-0">
         <Editor 
-          className="min-h-[500px] w-full max-w-full overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-b-lg bg-background text-sm"
+          className="min-h-[500px] min-w-[70vw] w-full max-w-full mx-[20px] overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-b-lg bg-background text-sm"
         />
       </EditorContainer>
 

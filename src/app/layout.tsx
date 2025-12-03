@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   description: "一个现代化的在线笔记编辑平台",
 };
 
+// 创建一个客户端组件用于 AuthProvider
+import { ClientLayout } from "./ClientLayout";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -27,7 +30,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );

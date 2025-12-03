@@ -31,24 +31,24 @@ const NoteCard = ({ note }: Props) => {
   return (
     <Card className={cn(
       'h-full flex flex-col hover:shadow-xl transition-all duration-300 cursor-pointer',
-      'border border-gray-200 hover:border-gray-300 hover:-translate-y-1'
+      'border border-border hover:border-border hover:-translate-y-1'
     )}>
       <Link href={`/editor?id=${note.id}`} passHref className="h-full flex flex-col">
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg font-semibold text-gray-900 line-clamp-2">
+          <CardTitle className="text-lg font-semibold text-foreground line-clamp-2">
             {note.title || '无标题笔记'}
           </CardTitle>
-          <CardDescription className="text-xs text-gray-500 mt-1">
+          <CardDescription className="text-xs text-muted-foreground mt-1">
             {formattedDate}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-1 py-2">
-          <div className="text-sm text-gray-600 line-clamp-4">
+          <div className="text-sm text-muted-foreground line-clamp-4">
             {plainText.substring(0, 120)}{plainText.length > 120 ? '...' : ''}
           </div>
         </CardContent>
-        <CardFooter className="pt-2 border-t border-gray-100">
-          <span className="text-xs text-blue-500 font-medium hover:underline">
+        <CardFooter className="pt-2 border-t border-border">
+          <span className="text-xs text-primary font-medium hover:underline">
             查看详情 →
           </span>
         </CardFooter>
