@@ -1,78 +1,126 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Note } from '@/types/note';
-
-// Mock data for testing
-const mockNotes: Note[] = [
-  {
-    id: '1',
-    title: '笔记标题1',
-    content: '这是笔记内容的简短预览。它可以包含一些文本，帮助用户快速了解笔记的主题。',
-    user_id: 'user1',
-    created_at: '2024-06-01T10:00:00Z',
-    updated_at: '2024-06-01T10:00:00Z',
-  },
-  {
-    id: '2',
-    title: '笔记标题2',
-    content: '这是另一个笔记的内容预览。',
-    user_id: 'user1',
-    created_at: '2024-05-31T15:30:00Z',
-    updated_at: '2024-05-31T15:30:00Z',
-  },
-  {
-    id: '3',
-    title: '笔记标题3',
-    content: '这是第三个笔记的内容预览，包含更多详细信息。',
-    user_id: 'user1',
-    created_at: '2024-05-30T09:15:00Z',
-    updated_at: '2024-05-30T09:15:00Z',
-  },
-  {
-    id: '4',
-    title: '笔记标题4',
-    content: '这是第四个笔记的内容预览，包含更多详细信息。',
-    user_id: 'user1',
-    created_at: '2024-05-30T09:15:00Z',
-    updated_at: '2024-05-30T09:15:00Z',
-  },
-];
+import { supabase } from '@/lib/supabase';
+import { useAuth } from './useAuth';
 
 export function useNotes() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
-    // For now, use mock data
-    // In production, you would fetch from API
-    try {
-      setNotes(mockNotes);
+    if (!user) {
+      setNotes([]);
       setLoading(false);
-    } catch (err) {
-      setError('Failed to fetch notes');
-      setLoading(false);
+      return;
     }
-  }, []);
+
+    // Fetch notes from Supabase
+    const fetchNotes = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('notes')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('updated_at', { ascending: false });
+
+        if (error) {
+          throw error;
+        }
+
+        setNotes(data || []);
+        setLoading(false);
+      } catch (err: any) {
+        setError('Failed to fetch notes: ' + err.message);
+        setLoading(false);
+      }
+    };
+
+    fetchNotes();
+  }, [user]);
 
   const getNoteById = (id: string) => {
     return notes.find(note => note.id === id);
   };
 
-  const createNote = async (title: string, content: string, userId: string) => {
-    // For now, just add to mock data
-    // In production, you would call the API
-    const newNote: Note = {
-      id: Date.now().toString(),
-      title,
-      content,
-      user_id: userId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+  const createNote = async (title: string, content: string) => {
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+    try {
+      const { data, error } = await supabase
+        .from('notes')
+        .insert({
+          title,
+          content,
+          user_id: user.id,
+        })
+        .select('*')
+        .single();
 
-    setNotes(prev => [newNote, ...prev]);
-    return newNote;
+      if (error) {
+        throw error;
+      }
+
+      setNotes(prev => [data, ...prev]);
+      return data;
+    } catch (err: any) {
+      setError('Failed to create note: ' + err.message);
+      throw err;
+    }
+  };
+
+  const updateNote = async (id: string, title: string, content: string) => {
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+    try {
+      const { data, error } = await supabase
+        .from('notes')
+        .update({
+          title,
+          content,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .eq('user_id', user.id)  // 添加用户权限验证
+        .select('*')
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      setNotes(prev => prev.map(note => note.id === id ? data : note));
+      return data;
+    } catch (err: any) {
+      setError('Failed to update note: ' + err.message);
+      throw err;
+    }
+  };
+
+  const deleteNotes = async (ids: string[]) => {
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+    try {
+      const { error } = await supabase
+        .from('notes')
+        .delete()
+        .in('id', ids)
+        .eq('user_id', user.id);  // 添加用户权限验证
+
+      if (error) {
+        throw error;
+      }
+
+      setNotes(prev => prev.filter(note => !ids.includes(note.id)));
+    } catch (err: any) {
+      setError('Failed to delete notes: ' + err.message);
+      throw err;
+    }
   };
 
   return {
@@ -81,5 +129,7 @@ export function useNotes() {
     error,
     getNoteById,
     createNote,
+    updateNote,
+    deleteNotes,
   };
 }

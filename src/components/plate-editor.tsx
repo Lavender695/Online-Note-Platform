@@ -8,21 +8,54 @@ import { Plate, usePlateEditor } from 'platejs/react';
 import { EditorKit } from '@/components/editor-kit';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { Editor, EditorContainer } from '@/components/ui/editor';
+import { Button } from '@/components/ui/button';
 import { Note } from '@/types/note';
+import { useNotes } from '@/hooks/use-notes';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
+import { Save, Cloud } from 'lucide-react';
+import type { MyValue, RichText } from '@/components/plate-types';
 
 type Props = {
   note?: Note;
 };
 
 export function PlateEditor({ note }: Props) {
+  const { user, loading: authLoading } = useAuth();
+  const { createNote, updateNote, notes } = useNotes();
+  const [saving, setSaving] = React.useState(false);
+  const [lastSaved, setLastSaved] = React.useState<Date | null>(null);
+  
+  // 检查用户状态和笔记列表
+  React.useEffect(() => {
+    console.log('用户状态:', user);
+    console.log('认证加载中:', authLoading);
+    console.log('笔记列表:', notes);
+  }, [user, authLoading, notes]);
+
+  // Get local storage key for this note
+  const getLocalStorageKey = () => {
+    return note ? `note_${note.id}` : 'new_note';
+  };
+
   // Convert note content to editor value
   const getEditorValue = () => {
+    // Check local storage first for unsaved changes
+    const localContent = localStorage.getItem(getLocalStorageKey());
+    if (localContent) {
+      try {
+        return JSON.parse(localContent);
+      } catch (e) {
+        console.error('本地存储解析失败:', e);
+      }
+    }
+
     if (!note) {
       // Empty editor for new notes
       return normalizeNodeId([
         {
           children: [{ text: '' }],
-          type: 'p',
+          type: 'h1',
         },
       ]);
     }
@@ -46,12 +79,161 @@ export function PlateEditor({ note }: Props) {
     value: getEditorValue(),
   });
 
+  // 检查用户认证状态
+  React.useEffect(() => {
+    console.log('用户状态:', user);
+  }, [user]);
+
+  // Auto-save to local storage when editor value changes
+  React.useEffect(() => {
+    if (!editor) return;
+
+    const saveToLocal = () => {
+      const value = editor.children;
+      localStorage.setItem(getLocalStorageKey(), JSON.stringify(value));
+      console.log('已保存到本地存储:', value);
+    };
+
+    // Save on every change with a small delay
+    const debounceTimer = setTimeout(saveToLocal, 500);
+    return () => clearTimeout(debounceTimer);
+  }, [editor?.children, getLocalStorageKey]);
+
+  // 辅助函数：递归提取文本内容
+  const getTextContent = (element: any): string => {
+    if (!element) return '';
+    
+    // 如果是文本节点
+    if (typeof element === 'object' && 'text' in element) {
+      return element.text || '';
+    }
+    
+    // 如果是包含children的元素
+    if (typeof element === 'object' && 'children' in element && Array.isArray(element.children)) {
+      return element.children.map(getTextContent).join('');
+    }
+    
+    return '';
+  };
+
+  // Extract title and content from editor value
+  const extractNoteData = (): { title: string; content: string } => {
+    if (!editor) {
+      console.error('editor is null/undefined');
+      return { title: '', content: '' };
+    }
+
+    const value = editor.children as MyValue;
+    console.log('编辑器内容:', value);
+    
+    let title = '无标题笔记';
+    let content = '';
+
+    // 确保有内容
+    if (value.length === 0) {
+      console.error('编辑器内容为空');
+      return { title, content };
+    }
+
+    // 提取标题 - 使用第一个非空块的内容
+    for (const block of value) {
+      const blockText = getTextContent(block);
+      if (blockText.trim()) {
+        title = blockText.trim();
+        break;
+      }
+    }
+
+    // 提取内容 - 使用整个编辑器内容的JSON字符串
+    // 这样可以保存完整的富文本格式
+    content = JSON.stringify(value);
+
+    console.log('提取的数据:', { title, content });
+    return { title, content };
+  };
+
+  // Save note to Supabase
+  const saveNote = async () => {
+    if (!user) {
+      console.error('用户未登录');
+      toast.error('请先登录');
+      return;
+    }
+
+    if (authLoading) {
+      console.error('认证状态加载中');
+      toast.error('认证状态加载中，请稍候');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { title, content } = extractNoteData();
+      console.log('提取的笔记数据:', { title, content });
+
+      // 确保title和content至少有一个非空
+      if (!title.trim() && !content.trim()) {
+        toast.error('笔记内容不能为空');
+        return;
+      }
+
+      if (note) {
+        // Update existing note
+        console.log('更新现有笔记:', note.id);
+        const updatedNote = await updateNote(note.id, title, content);
+        console.log('笔记已更新:', updatedNote);
+        toast.success('笔记已更新');
+      } else {
+        // Create new note
+        console.log('创建新笔记:', user.id);
+        const newNote = await createNote(title, content);
+        console.log('新笔记已创建:', newNote);
+        toast.success('笔记已保存');
+        // Clear local storage for new note
+        localStorage.removeItem('new_note');
+      }
+
+      setLastSaved(new Date());
+    } catch (error: any) {
+      console.error('保存失败:', error);
+      toast.error('保存失败: ' + (error.message || '未知错误'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Plate editor={editor}>
       <EditorContainer className="relative w-full max-w-full m-0">
         <Editor 
           className="min-h-[500px] min-w-[70vw] w-full max-w-full mx-[20px] overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-b-lg bg-background text-sm"
         />
+        
+        {/* Save Button */}
+        <div className="fixed bottom-8 right-8 flex gap-2">
+          <Button 
+            onClick={saveNote}
+            disabled={saving}
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90"
+          >
+            {saving ? (
+              <>
+                <Cloud className="h-4 w-4 animate-spin" />
+                保存中...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                保存笔记
+              </>
+            )}
+          </Button>
+          {lastSaved && (
+            <div className="text-xs text-muted-foreground self-center">
+              最后保存: {lastSaved.toLocaleTimeString()}
+            </div>
+          )}
+        </div>
       </EditorContainer>
 
       <SettingsDialog />

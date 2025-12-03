@@ -1,36 +1,229 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 在线笔记平台
 
-## Getting Started
+一个功能丰富的在线笔记应用，提供富文本编辑、笔记管理、用户认证等功能，基于现代Web技术栈构建。
 
-First, run the development server:
+## 功能特性
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+### 核心功能
+- ✅ **富文本编辑**：使用Plate.js构建的强大编辑器，支持多种格式和功能
+- ✅ **笔记管理**：创建、编辑、删除和搜索笔记
+- ✅ **用户认证**：安全的登录和注册系统
+- ✅ **本地自动保存**：实时保存编辑内容到本地存储，防止数据丢失
+- ✅ **云端同步**：自动将笔记同步到Supabase数据库
+- ✅ **响应式设计**：适配各种设备和屏幕尺寸
+
+### 高级功能
+- 📝 **Markdown支持**：支持Markdown格式的内容
+- 🎨 **多种编辑工具**：表格、列表、代码块、链接等
+- 🔍 **搜索功能**：快速查找笔记
+- ⚙️ **设置面板**：个性化应用设置
+- 📱 **移动友好**：支持移动设备编辑
+
+## 技术栈
+
+### 前端
+- **框架**: Next.js 16
+- **UI库**: React 18
+- **编辑器**: Plate.js (富文本编辑器)
+- **UI组件**: @shadcn/ui, Radix UI
+- **样式**: Tailwind CSS
+- **状态管理**: React Hooks
+- **工具库**: clsx, lodash, date-fns
+
+### 后端
+- **API**: Next.js API Routes
+- **数据库**: Supabase
+- **认证**: Supabase Auth
+- **文件上传**: UploadThing
+- **服务器**: Express.js (可选)
+
+### AI集成（暂未实现，仍在开发中）
+- **AI SDK**: @ai-sdk/react
+- **AI助手**: 集成AI命令和 copilots
+
+## 项目结构
+
+```
+online-note-platform/
+├── src/
+│   ├── app/
+│   │   ├── (main)/           # 主要应用页面
+│   │   │   ├── dashboard/    # 笔记仪表板
+│   │   │   ├── editor/       # 富文本编辑器
+│   │   │   ├── search/       # 笔记搜索
+│   │   │   └── settings/     # 设置页面
+│   │   ├── api/              # API路由
+│   │   ├── auth/             # 认证页面
+│   │   └── layout.tsx        # 应用布局
+│   ├── components/           # React组件
+│   │   ├── ui/               # UI组件
+│   │   ├── editor-kit.tsx    # 编辑器工具集
+│   │   └── plate-editor.tsx  # 主编辑器组件
+│   ├── hooks/                # 自定义Hooks
+│   │   ├── use-notes.ts      # 笔记管理
+│   │   └── use-auth.ts       # 认证管理
+│   ├── lib/                  # 工具库
+│   │   ├── supabase.ts       # Supabase客户端
+│   │   └── utils.ts          # 通用工具
+│   └── types/                # TypeScript类型定义
+├── public/                   # 静态资源
+├── server/                   # 可选的Express服务器
+└── package.json              # 项目配置
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 快速开始
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 前置条件
+- Node.js 18+ 或 pnpm 安装
+- Supabase 账户和项目
+- UploadThing 账户 (可选)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 安装
 
-## Learn More
+1. 克隆仓库
+```bash
+git clone <repository-url>
+cd online-note-platform
+```
 
-To learn more about Next.js, take a look at the following resources:
+2. 安装依赖
+```bash
+# 使用 npm
+npm install
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# 或使用 pnpm
+pnpm install
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 配置
 
-## Deploy on Vercel
+1. 创建 `.env.local` 文件并添加以下环境变量：
+```
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+2. 配置 Supabase 数据库：
+   - 创建 `notes` 表，包含以下字段：
+     - `id` (UUID, 主键)
+     - `title` (文本)
+     - `content` (文本或JSON)
+     - `user_id` (UUID, 外键关联用户)
+     - `created_at` (时间戳)
+     - `updated_at` (时间戳)
+   - 配置行级安全策略，确保用户只能访问自己的笔记
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 运行
+
+1. 启动开发服务器
+```bash
+npm run dev
+# 或
+pnpm dev
+```
+
+2. 打开浏览器访问 `http://localhost:3000`
+
+### 构建生产版本
+
+```bash
+npm run build
+# 或
+pnpm build
+```
+
+### 启动生产服务器
+
+```bash
+npm run start
+# 或
+pnpm start
+```
+
+## 主要功能说明
+
+### 笔记编辑器
+
+使用 Plate.js 构建的富文本编辑器，支持：
+- 标题和段落
+- 列表 (有序和无序)
+- 代码块
+- 表格
+- 链接和图片
+- 注释功能
+- Markdown 支持
+
+### 笔记管理
+
+- **创建笔记**：点击"创建笔记"按钮开始新笔记
+- **编辑笔记**：在编辑器中修改笔记内容
+- **删除笔记**：在仪表板中选择笔记进行删除
+- **搜索笔记**：使用搜索功能快速查找特定笔记
+
+### 用户认证
+
+- **注册**：创建新账户
+- **登录**：使用现有账户登录
+- **安全**：使用 Supabase Auth 确保用户数据安全
+
+## API 端点
+
+### 笔记相关
+- `GET /api/notes` - 获取用户笔记
+- `POST /api/notes` - 创建新笔记
+- `PUT /api/notes/:id` - 更新笔记
+- `DELETE /api/notes/:id` - 删除笔记
+
+### AI 相关 (暂未实现，仍在开发中)
+- `POST /api/ai/command` - 执行AI命令
+- `POST /api/ai/copilot` - AI助手功能
+
+## 开发指南
+
+### 代码规范
+
+- 使用 TypeScript 编写类型安全的代码
+- 遵循 Next.js 最佳实践
+- 使用 Tailwind CSS 进行样式设计
+- 组件使用 PascalCase 命名
+- 函数和变量使用 camelCase 命名
+
+### 测试
+
+```bash
+# 运行测试
+npm test
+# 或
+pnpm test
+```
+
+###  linting
+
+```bash
+# 运行 ESLint
+npm run lint
+# 或
+pnpm lint
+```
+
+
+## 许可证
+
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情
+
+## 致谢
+
+- [Next.js](https://nextjs.org/) - React 框架
+- [Supabase](https://supabase.com/) - 开源 Firebase 替代品
+- [Plate.js](https://platejs.org/) - 富文本编辑器框架
+- [@shadcn/ui](https://ui.shadcn.com/) - UI 组件库
+- [Tailwind CSS](https://tailwindcss.com/) - 实用优先的 CSS 框架
+
+## 联系方式
+
+该项目仍在开发中，如有问题或建议，请通过以下方式联系：
+
+- Email: [2513690786@qq.com]
+- GitHub: [Lavender695](https://github.com/Lavender695)
+
+---

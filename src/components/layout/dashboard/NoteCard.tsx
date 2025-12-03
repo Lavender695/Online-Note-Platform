@@ -13,9 +13,12 @@ import { cn } from '@/lib/utils'
 
 type Props = {
   note: Note
+  isSelected?: boolean
+  onSelect?: (id: string) => void
+  isEditMode?: boolean
 }
 
-const NoteCard = ({ note }: Props) => {
+const NoteCard = ({ note, isSelected = false, onSelect, isEditMode = false }: Props) => {
   // Format date for display
   const formattedDate = new Date(note.created_at).toLocaleString('zh-CN', {
     year: 'numeric',
@@ -31,9 +34,36 @@ const NoteCard = ({ note }: Props) => {
   return (
     <Card className={cn(
       'h-full flex flex-col hover:shadow-xl transition-all duration-300 cursor-pointer',
-      'border border-border hover:border-border hover:-translate-y-1'
+      'border border-border hover:border-border hover:-translate-y-1',
+      isSelected && 'border-primary bg-primary/10'
     )}>
-      <Link href={`/editor?id=${note.id}`} passHref className="h-full flex flex-col">
+      {isEditMode && (
+        <div 
+          className={cn(
+            'absolute top-2 right-2 h-5 w-5 rounded-full border-2 cursor-pointer flex items-center justify-center',
+            isSelected 
+              ? 'border-primary bg-primary text-white' 
+              : 'border-muted-foreground bg-background'
+          )}
+          onClick={(e) => {
+            e.stopPropagation()
+            if (onSelect) onSelect(note.id)
+          }}
+        >
+          {isSelected && <div className="h-2 w-2 rounded-full bg-white" />}
+        </div>
+      )}
+      <Link 
+        href={`/editor?id=${note.id}`} 
+        passHref 
+        className="h-full flex flex-col"
+        onClick={(e) => {
+          if (isEditMode) {
+            e.preventDefault()
+            if (onSelect) onSelect(note.id)
+          }
+        }}
+      >
         <CardHeader className="pb-2">
           <CardTitle className="text-lg font-semibold text-foreground line-clamp-2">
             {note.title || '无标题笔记'}
