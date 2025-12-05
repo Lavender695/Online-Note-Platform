@@ -6,12 +6,11 @@ import { normalizeNodeId } from 'platejs';
 import { Plate, usePlateEditor } from 'platejs/react';
 
 import { EditorKit } from '@/components/editor-kit';
-import { SettingsDialog } from '@/components/settings-dialog';
 import { Editor, EditorContainer } from '@/components/ui/editor';
 import { Button } from '@/components/ui/button';
 import { Note } from '@/types/note';
 import { useNotes } from '@/hooks/use-notes';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 import { Save, Cloud } from 'lucide-react';
 import type { MyValue, RichText } from '@/components/plate-types';
@@ -60,8 +59,18 @@ export function PlateEditor({ note }: Props) {
       ]);
     }
     
-    // For now, we'll use a simple conversion
-    // In a real app, you'd need to parse the content into the correct format
+    // 检查内容是否是JSON字符串，如果是则解析，否则使用简单转换
+    try {
+      const parsedContent = JSON.parse(note.content);
+      if (Array.isArray(parsedContent)) {
+        // 如果是有效的编辑器内容结构，直接使用
+        return normalizeNodeId(parsedContent);
+      }
+    } catch (e) {
+      // 如果解析失败，说明是纯文本，使用简单转换
+      console.error('笔记内容解析失败，使用纯文本模式:', e);
+    }
+    
     return normalizeNodeId([
       {
         children: [{ text: note.title }],
@@ -206,7 +215,7 @@ export function PlateEditor({ note }: Props) {
     <Plate editor={editor}>
       <EditorContainer className="relative w-full max-w-full m-0">
         <Editor 
-          className="min-h-[500px] min-w-[70vw] w-full max-w-full mx-[20px] overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-b-lg bg-background text-sm"
+          className="min-h-[500px] min-w-[70vw] w-full max-w-full mx-5 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-b-lg bg-background text-sm"
         />
         
         {/* Save Button */}
@@ -235,8 +244,6 @@ export function PlateEditor({ note }: Props) {
           )}
         </div>
       </EditorContainer>
-
-      <SettingsDialog />
     </Plate>
   );
 }

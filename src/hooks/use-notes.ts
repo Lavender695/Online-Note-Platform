@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Note } from '@/types/note';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from './useAuth';
+import { useAuth } from './use-auth';
 
 export function useNotes() {
   const [notes, setNotes] = useState<Note[]>([]);

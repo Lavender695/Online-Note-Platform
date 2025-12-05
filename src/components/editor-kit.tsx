@@ -85,7 +85,7 @@ export const EditorKit = [
   ...MarkdownKit,
 
   // UI
-  ...BlockPlaceholderKit,
+  // ...BlockPlaceholderKit,
   ...FixedToolbarKit,
   ...FloatingToolbarKit,
 ];

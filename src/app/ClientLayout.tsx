@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode, useEffect } from 'react';
-import { AuthProvider } from '@/hooks/useAuth';
+import { AuthProvider } from '@/hooks/use-auth';
 import { Toaster } from 'sonner';
 
 interface ClientLayoutProps {

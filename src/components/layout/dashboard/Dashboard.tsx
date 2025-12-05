@@ -60,7 +60,7 @@ const Dashboard = (props: Props) => {
 
   return (
     <div className="p-6">
-      <div className="mb-6 flex justify-between items-center">
+      <div className="mb-6 flex-col justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground">我的笔记</h1>
           <p className="text-muted-foreground mt-1">查看和管理您的所有笔记</p>
@@ -71,7 +71,7 @@ const Dashboard = (props: Props) => {
             <Button 
               variant="outline"
               onClick={exitEditMode}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 mt-5"
             >
               <X className="h-4 w-4" />
               取消
@@ -80,7 +80,7 @@ const Dashboard = (props: Props) => {
               variant="destructive"
               onClick={handleDeleteSelected}
               disabled={selectedNotes.length === 0}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 mt-5"
             >
               <Trash2 className="h-4 w-4" />
               删除 ({selectedNotes.length})
@@ -90,7 +90,7 @@ const Dashboard = (props: Props) => {
           <Button 
             variant="outline"
             onClick={() => setIsEditMode(true)}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 mt-5"
           >
             <Edit className="h-4 w-4" />
             编辑笔记

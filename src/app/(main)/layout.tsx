@@ -2,7 +2,7 @@
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import Header from '@/components/layout/Header';
 import { AppSidebar } from '@/components/layout/home/AppSidebar';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 

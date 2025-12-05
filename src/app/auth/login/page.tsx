@@ -39,7 +39,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+    <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl">登录</CardTitle>
@@ -72,7 +72,7 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full mt-8 cursor-pointer" disabled={loading}>
+            <Button type="submit" className="w-full mt-8 bg-primary text-primary-foreground" disabled={loading}>
               {loading ? '登录中...' : '登录'}
             </Button>
           </CardFooter>

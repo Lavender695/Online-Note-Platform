@@ -12,7 +12,7 @@ export default function EditorPage() {
   const note = noteId ? notes.find(note => note.id === noteId) : undefined;
 
   if (loading) {
-    return <div className="flex items-center justify-center h-screen text-xl">加载中...</div>;
+    return null;
   }
 
   if (error) {

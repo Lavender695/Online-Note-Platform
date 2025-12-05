@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card"
 import { Note } from '@/types/note'
 import { cn } from '@/lib/utils'
+import { normalizeNodeId } from 'platejs'
 
 type Props = {
   note: Note
@@ -28,9 +29,14 @@ const NoteCard = ({ note, isSelected = false, onSelect, isEditMode = false }: Pr
     minute: '2-digit'
   })
 
-  // Extract text from content (remove any HTML tags)
-  const plainText = note.content.replace(/<[^>]*>/g, '')
-
+  const plainText = note.content
+    ? normalizeNodeId(JSON.parse(note.content))
+        .map((node: any) => {
+          if (node.children[0].text) return node.children[0].text
+          return ''
+        })
+        .join(' ')
+    : ''
   return (
     <Card className={cn(
       'h-full flex flex-col hover:shadow-xl transition-all duration-300 cursor-pointer',
