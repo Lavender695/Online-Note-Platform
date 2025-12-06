@@ -3,8 +3,35 @@
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import { Home, FilePlus, Search, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useNotes } from '@/hooks/use-notes';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 export function AppSidebar() {
+  const { createNote } = useNotes();
+  const router = useRouter();
+  const [isCreating, setIsCreating] = useState(false);
+
+  const handleNewNote = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    try {
+      setIsCreating(true);
+      // 清空本地存储的new_note记录，避免显示历史内容
+      localStorage.removeItem('new_note');
+      // 创建空笔记
+      const newNote = await createNote('未命名笔记', JSON.stringify([]));
+      if (newNote?.id) {
+        // 导航到编辑页面并加载新笔记
+        router.push(`/editor?id=${newNote.id}`);
+      }
+    } catch (error) {
+      console.error('创建笔记失败:', error);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   return (
     <Sidebar className="z-100">
       <SidebarContent className="bg-sidebar border-r border-sidebar-border">
@@ -27,16 +54,16 @@ export function AppSidebar() {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton 
-                asChild
+                onClick={handleNewNote}
+                disabled={isCreating}
                 className={cn(
-                  'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                  'data-[state=open]:bg-gray-100 data-[state=open]:text-gray-900'
+                  'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground cursor-pointer',
+                  'data-[state=open]:bg-gray-100 data-[state=open]:text-gray-900',
+                  isCreating && 'opacity-50 cursor-not-allowed'
                 )}
               >
-                <a href="/editor">
-                  <FilePlus className="h-4 w-4 text-muted-foreground" />
-                  <span>新建笔记</span>
-                </a>
+                <FilePlus className="h-4 w-4 text-muted-foreground" />
+                <span>{isCreating ? '创建中...' : '新建笔记'}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
