@@ -3,7 +3,6 @@ import type {
   ToolName,
 } from '@/components/use-chat';
 import type { NextRequest } from 'next/server';
-import { createGateway } from '@ai-sdk/gateway';
 import {
   type LanguageModel,
   type UIMessageStreamWriter,
@@ -55,9 +54,7 @@ export async function POST(req: NextRequest) {
 
   const isSelecting = editor.api.isExpanded();
 
-  const gatewayProvider = createGateway({
-    apiKey,
-  });
+  // Temporarily remove gatewayProvider since @ai-sdk/gateway is not installed
 
   try {
     const stream = createUIMessageStream<ChatMessage>({
@@ -69,7 +66,7 @@ export async function POST(req: NextRequest) {
             enum: isSelecting
               ? ['generate', 'edit', 'comment']
               : ['generate', 'comment'],
-            model: gatewayProvider(model || 'google/gemini-2.5-flash'),
+            model: model || 'google/gemini-2.5-flash',
             output: 'enum',
             prompt: getChooseToolPrompt(messagesRaw),
           });
@@ -84,13 +81,13 @@ export async function POST(req: NextRequest) {
 
         const stream = streamText({
           experimental_transform: markdownJoinerTransform(),
-          model: gatewayProvider(model || 'openai/gpt-4o-mini'),
+          model: model || 'openai/gpt-4o-mini',
           // Not used
           prompt: '',
           tools: {
             comment: getCommentTool(editor, {
               messagesRaw,
-              model: gatewayProvider(model || 'google/gemini-2.5-flash'),
+              model: model || 'google/gemini-2.5-flash',
               writer,
             }),
           },
@@ -134,7 +131,7 @@ export async function POST(req: NextRequest) {
                     role: 'user',
                   },
                 ],
-                model: gatewayProvider(model || 'openai/gpt-4o-mini'),
+                model: model || 'openai/gpt-4o-mini',
               };
             }
           },

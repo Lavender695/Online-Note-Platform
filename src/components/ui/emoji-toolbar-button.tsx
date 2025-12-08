@@ -271,7 +271,7 @@ function EmojiPickerContent({
           return (
             <div
               key={categoryId}
-              ref={section.root}
+              ref={section.root as React.RefObject<HTMLDivElement>}
               style={{ width: getRowWidth }}
               data-id={categoryId}
             >
@@ -341,9 +341,9 @@ function EmojiPickerContent({
   return (
     <div
       // eslint-disable-next-line react-hooks/refs
-      ref={refs.current.contentRoot}
+      ref={refs.current.contentRoot as React.RefObject<HTMLDivElement>}
       className={cn(
-        'h-full min-h-[50%] overflow-y-auto overflow-x-hidden px-2',
+        'h-full min-h-[50%] overflow-y-auto overflow-x-hidden px-2',        
         '[&::-webkit-scrollbar]:w-4',
         '[&::-webkit-scrollbar-button]:hidden [&::-webkit-scrollbar-button]:size-0',
         '[&::-webkit-scrollbar-thumb]:min-h-11 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/25',
@@ -352,7 +352,7 @@ function EmojiPickerContent({
       data-id="scroll"
     >
       {/* eslint-disable-next-line react-hooks/refs */}
-      <div ref={refs.current.content} className="h-full">
+      <div ref={refs.current.content as React.RefObject<HTMLDivElement>} className="h-full">
         {isSearching ? SearchList() : EmojiList()}
       </div>
     </div>
