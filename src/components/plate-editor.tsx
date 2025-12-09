@@ -15,6 +15,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 import { Save, Cloud, Trash2, Eraser } from 'lucide-react';
 import type { MyValue, RichText } from '@/components/plate-types';
+import { NoteInfoBar } from './note-info-bar';
+import { usePermission } from '@/hooks/use-permission';
 
 type Props = {
   note?: Note;
@@ -23,6 +25,7 @@ type Props = {
 export function PlateEditor({ note }: Props) {
   const { user, loading: authLoading } = useAuth();
   const { createNote, updateNote, deleteNotes, notes } = useNotes();
+  const { canEdit, isOwner, loading: permissionLoading } = usePermission(note);
   const [saving, setSaving] = React.useState(false);
   const [lastSaved, setLastSaved] = React.useState<Date | null>(null);
   const [userActivityTime, setUserActivityTime] = React.useState(Date.now());
@@ -97,9 +100,11 @@ export function PlateEditor({ note }: Props) {
     console.log('用户状态:', user);
   }, [user]);
 
-  // Handle user input to reset debounce timer
+  // Handle user input to reset debounce timer - only if user has edit permission
   const handleUserActivity = () => {
-    setUserActivityTime(Date.now());
+    if (canEdit()) {
+      setUserActivityTime(Date.now());
+    }
   };
 
   // Auto-save to local storage when editor value changes
@@ -117,7 +122,7 @@ export function PlateEditor({ note }: Props) {
     return () => clearTimeout(debounceTimer);
   }, [editor?.children, getLocalStorageKey]);
 
-  // Save note to Supabase
+  // Save note to Supabase - only if user has edit permission
   const saveNote = async (isManualSave = false) => {
     if (!user) {
       console.error('用户未登录');
@@ -128,6 +133,12 @@ export function PlateEditor({ note }: Props) {
     if (authLoading) {
       console.error('认证状态加载中');
       if (isManualSave) toast.error('认证状态加载中，请稍候');
+      return;
+    }
+
+    if (!canEdit) {
+      console.error('用户没有编辑权限');
+      if (isManualSave) toast.error('您没有权限保存此笔记');
       return;
     }
 
@@ -173,10 +184,10 @@ export function PlateEditor({ note }: Props) {
   React.useEffect(() => {
     const autoSaveTimer = setTimeout(async () => {
       const inactivityTime = Date.now() - userActivityTime;
-      if (inactivityTime >= 3000 && editor?.children) {
+      if (inactivityTime >= 10000 && editor?.children) {
         await saveNote(false); // 自动保存不显示toast
       }
-    }, 3000); // 在这里修改自动保存的时间间隔
+    }, 10000); // 在这里修改自动保存的时间间隔
 
     return () => clearTimeout(autoSaveTimer);
   }, [userActivityTime, editor?.children, saveNote]);
@@ -303,9 +314,9 @@ export function PlateEditor({ note }: Props) {
     }
   };
 
-  // Clear document function
+  // Clear document function - only if user has edit permission
   const handleClearDocument = () => {
-    if (!editor) return;
+    if (!editor || !canEdit()) return;
 
     // Set editor to empty state with just a paragraph
     editor.children = normalizeNodeId([
@@ -321,43 +332,48 @@ export function PlateEditor({ note }: Props) {
 
   return (
     <Plate editor={editor}>
-      <EditorContainer className="relative w-full max-w-full m-0">
+      <EditorContainer className="relative w-full max-w-full m-0 pt-[80px]">
+         {note && <NoteInfoBar note={note} />}
         <Editor 
           className="min-h-[500px] min-w-[70vw] w-full max-w-full mx-5 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-b-lg bg-background text-sm"
+          readOnly={!canEdit()} // 根据权限设置只读模式
         />
         
         {/* 最后保存时间 - 右上角（toolbar下方） */}
         {lastSaved && (
-          <div className="absolute top-14 right-4 z-10 text-xs text-muted-foreground whitespace-nowrap">
+          <div className="absolute top-24 right-4 z-10 text-xs text-muted-foreground whitespace-nowrap">
             自动保存于: {lastSaved.toLocaleTimeString()}
           </div>
         )}
         
         {/* 操作按钮区域 */}
         <div className="fixed bottom-8 right-8 flex items-center gap-2 z-10">
-          {/* 保存按钮 */}
-          <Button 
-            onClick={() => saveNote(true)}
-            disabled={saving}
-            className="flex items-center gap-2 bg-primary hover:bg-primary/90"
-          >
-            {saving ? (
-              <>
-                <Cloud className="h-4 w-4 animate-spin" />
-                保存中...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4" />
-                保存笔记
-              </>
-            )}
-          </Button>
+          {/* 保存按钮 - 只有编辑权限可以保存 */}
+          {canEdit() && (
+            <Button 
+              onClick={() => saveNote(true)}
+              disabled={saving}
+              className="flex items-center gap-2 bg-primary hover:bg-primary/90"
+            >
+              {saving ? (
+                <>
+                  <Cloud className="h-4 w-4 animate-spin" />
+                  保存中...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  保存笔记
+                </>
+              )}
+            </Button>
+          )}
         </div>
 
         {/* 清空和删除按钮 */}
         <div className="fixed bottom-8 left-8 flex gap-2 z-10 transition-all duration-200 button-container-bottom-left">
-          {/* 清空文档按钮 */}
+          {/* 清空文档按钮 - 只有所有者或编辑权限可以操作 */}
+        {canEdit() && (
           <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
             <DialogTrigger asChild>
               <Button variant="secondary" className="flex items-center gap-2">
@@ -382,34 +398,35 @@ export function PlateEditor({ note }: Props) {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+        )}
 
-          {/* 删除笔记按钮 */}
-          {note && (
-            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-              <DialogTrigger asChild>
-                <Button variant="destructive" className="flex items-center gap-2">
-                  <Trash2 className="h-4 w-4" />
-                  删除笔记
+        {/* 删除笔记按钮 - 只有所有者可以操作 */}
+        {note && isOwner() && (
+          <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <DialogTrigger asChild>
+              <Button variant="destructive" className="flex items-center gap-2">
+                <Trash2 className="h-4 w-4" />
+                删除笔记
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>确认删除</DialogTitle>
+                <DialogDescription>
+                  您确定要删除这篇笔记吗？此操作无法撤销。
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setShowDeleteDialog(false)}>
+                  取消
                 </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>确认删除</DialogTitle>
-                  <DialogDescription>
-                    您确定要删除这篇笔记吗？此操作无法撤销。
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <Button variant="ghost" onClick={() => setShowDeleteDialog(false)}>
-                    取消
-                  </Button>
-                  <Button variant="destructive" onClick={handleDeleteNote}>
-                    确认删除
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          )}
+                <Button variant="destructive" onClick={handleDeleteNote}>
+                  确认删除
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
         </div>
       </EditorContainer>
     </Plate>
