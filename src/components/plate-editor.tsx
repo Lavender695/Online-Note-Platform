@@ -13,8 +13,13 @@ import { Note } from '@/types/note';
 import { useNotes } from '@/hooks/use-notes';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
-import { Save, Cloud, Trash2, Eraser } from 'lucide-react';
+import { Save, Cloud, Trash2, Eraser, Database } from 'lucide-react';
 import type { MyValue, RichText } from '@/components/plate-types';
+
+import * as Y from 'yjs';
+import { IndexeddbPersistence } from 'y-indexeddb';
+// 移除了不存在的 createYjsValue 导入，使用 Yjs Map 直接存储内容
+
 
 type Props = {
   note?: Note;
@@ -28,6 +33,12 @@ export function PlateEditor({ note }: Props) {
   const [userActivityTime, setUserActivityTime] = React.useState(Date.now());
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [showClearDialog, setShowClearDialog] = React.useState(false);
+  const [isOffline, setIsOffline] = React.useState(!navigator.onLine);
+  const [isYjsReady, setIsYjsReady] = React.useState(false);
+  
+  // Yjs相关状态
+  const yDocRef = React.useRef<Y.Doc | null>(null);
+  const yPersistenceRef = React.useRef<IndexeddbPersistence | null>(null);
   
   // 检查用户状态和笔记列表
   React.useEffect(() => {
@@ -36,23 +47,53 @@ export function PlateEditor({ note }: Props) {
     console.log('笔记列表:', notes);
   }, [user, authLoading, notes]);
 
-  // Get local storage key for this note
-  const getLocalStorageKey = () => {
+  // Get Yjs document key for this note
+  const getYDocKey = () => {
     return note ? `note_${note.id}` : 'new_note';
   };
 
+  // Initialize Yjs document and persistence
+  React.useEffect(() => {
+    if (!user) return;
+
+    const yDocKey = getYDocKey();
+    
+    // Create Yjs document
+    const yDoc = new Y.Doc();
+    yDocRef.current = yDoc;
+    
+    // Get or create Yjs map for storing content - getMap automatically creates if not exists
+    yDoc.getMap('content');
+    
+    // Initialize IndexeddbPersistence
+    const persistence = new IndexeddbPersistence(yDocKey, yDoc);
+    yPersistenceRef.current = persistence;
+    
+    // Handle document loaded
+    persistence.on('synced', () => {
+      console.log('Yjs document synced with IndexedDB');
+      setIsYjsReady(true);
+    });
+    
+    // Handle connection state
+    const handleOnlineStatus = () => {
+      setIsOffline(!navigator.onLine);
+    };
+    
+    window.addEventListener('online', handleOnlineStatus);
+    window.addEventListener('offline', handleOnlineStatus);
+    
+    // Cleanup
+    return () => {
+      persistence.destroy();
+      yDoc.destroy();
+      window.removeEventListener('online', handleOnlineStatus);
+      window.removeEventListener('offline', handleOnlineStatus);
+    };
+  }, [user, note?.id]);
+
   // Convert note content to editor value
   const getEditorValue = () => {
-    // Check local storage first for unsaved changes
-    const localContent = localStorage.getItem(getLocalStorageKey());
-    if (localContent) {
-      try {
-        return JSON.parse(localContent);
-      } catch (e) {
-        console.error('本地存储解析失败:', e);
-      }
-    }
-
     if (!note) {
       // Empty editor for new notes
       return normalizeNodeId([
@@ -91,6 +132,46 @@ export function PlateEditor({ note }: Props) {
     plugins: EditorKit,
     value: getEditorValue(),
   });
+  
+  // Sync editor content with Yjs document when Yjs is ready
+  React.useEffect(() => {
+    if (!editor || !isYjsReady || !yDocRef.current) return;
+    
+    const yDoc = yDocRef.current;
+    const contentMap = yDoc.getMap('content');
+    
+    // If Yjs document is empty, initialize it with current editor content
+    const yjsContent = contentMap.get('value');
+    if (!yjsContent || (Array.isArray(yjsContent) && yjsContent.length === 0)) {
+      contentMap.set('value', editor.children);
+      console.log('Initialized Yjs document with current editor content');
+    } else {
+      // Otherwise, load content from Yjs document
+      if (Array.isArray(yjsContent) && yjsContent.length > 0) {
+        editor.children = normalizeNodeId(yjsContent as any[]);
+        console.log('Loaded content from Yjs document:', yjsContent);
+      }
+    }
+  }, [editor, isYjsReady]);
+  
+  // Sync editor changes to Yjs document
+  React.useEffect(() => {
+    if (!editor || !yDocRef.current || !isYjsReady) return;
+    
+    const syncToYjs = () => {
+      const value = editor.children;
+      const yDoc = yDocRef.current;
+      const contentMap = yDoc?.getMap('content');
+      if (contentMap) {
+        contentMap.set('value', value);
+        console.log('Synced editor changes to Yjs document');
+      }
+    };
+    
+    // Sync on every change with a small delay
+    const debounceTimer = setTimeout(syncToYjs, 300);
+    return () => clearTimeout(debounceTimer);
+  }, [editor?.children, isYjsReady]);
 
   // 检查用户认证状态
   React.useEffect(() => {
@@ -102,20 +183,21 @@ export function PlateEditor({ note }: Props) {
     setUserActivityTime(Date.now());
   };
 
-  // Auto-save to local storage when editor value changes
+  // Auto-save to local storage compatibility (keeping for backward compatibility)
   React.useEffect(() => {
     if (!editor) return;
 
     const saveToLocal = () => {
       const value = editor.children;
-      localStorage.setItem(getLocalStorageKey(), JSON.stringify(value));
-      console.log('已保存到本地存储:', value);
+      const localStorageKey = getYDocKey();
+      localStorage.setItem(localStorageKey, JSON.stringify(value));
+      console.log('已保存到本地存储(兼容模式):', value);
     };
 
     // Save on every change with a small delay
     const debounceTimer = setTimeout(saveToLocal, 500);
     return () => clearTimeout(debounceTimer);
-  }, [editor?.children, getLocalStorageKey]);
+  }, [editor?.children]);
 
   // Save note to Supabase
   const saveNote = async (isManualSave = false) => {
@@ -149,6 +231,9 @@ export function PlateEditor({ note }: Props) {
         const updatedNote = await updateNote(note.id, title, content);
         console.log('笔记已更新:', updatedNote);
         if (isManualSave) toast.success('笔记已更新');
+        // Clear local storage for new note
+        const localStorageKey = getYDocKey();
+        localStorage.removeItem(localStorageKey);
       } else {
         // Create new note
         console.log('创建新笔记:', user.id);
@@ -162,12 +247,36 @@ export function PlateEditor({ note }: Props) {
       setLastSaved(new Date());
     } catch (error: any) {
       console.error('保存失败:', error);
-      if (isManualSave) toast.error('保存失败: ' + (error.message || '未知错误'));
+      if (isManualSave) {
+        if (isOffline) {
+          toast.info('您当前处于离线状态，笔记将在网络恢复后自动保存');
+        } else {
+          toast.error('保存失败: ' + (error.message || '未知错误'));
+        }
+      }
     } finally {
       // 只有手动保存时才重置"保存中..."状态
       if (isManualSave) setSaving(false);
     }
   };
+  
+  // Auto-sync when network comes back online
+  React.useEffect(() => {
+    const handleOnline = async () => {
+      if (!isOffline && user && editor && lastSaved) {
+        // Only auto-sync if there are unsaved changes
+        const timeSinceLastSave = Date.now() - lastSaved.getTime();
+        if (timeSinceLastSave > 1000) { // More than 1 second since last save
+          console.log('网络已恢复，自动同步笔记');
+          await saveNote(false);
+          toast.success('网络已恢复，笔记已自动同步');
+        }
+      }
+    };
+    
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [isOffline, user, editor, lastSaved, saveNote]);
 
   // 自动保存功能
   React.useEffect(() => {
@@ -257,7 +366,18 @@ export function PlateEditor({ note }: Props) {
       return { title: '', content: '' };
     }
 
-    const value = editor.children as MyValue;
+    // 优先从Yjs文档获取内容（如果可用）
+    let value = editor.children as MyValue;
+    if (yDocRef.current && isYjsReady) {
+      const yDoc = yDocRef.current;
+      const contentMap = yDoc.getMap('content');
+      const yjsContent = contentMap.get('value');
+      if (Array.isArray(yjsContent) && yjsContent.length > 0) {
+        value = yjsContent as MyValue;
+        console.log('从Yjs文档获取内容:', value);
+      }
+    }
+    
     console.log('编辑器内容:', value);
     
     let title = '无标题笔记';
@@ -308,12 +428,22 @@ export function PlateEditor({ note }: Props) {
     if (!editor) return;
 
     // Set editor to empty state with just a paragraph
-    editor.children = normalizeNodeId([
+    const emptyContent = normalizeNodeId([
       { type: 'h1', children: [{ text: '' }] }
     ]);
-
+    
+    editor.children = emptyContent;
+    
+    // Clear Yjs document
+    if (yDocRef.current) {
+      const yDoc = yDocRef.current;
+      const contentMap = yDoc.getMap('content');
+      contentMap.set('value', emptyContent);
+    }
+    
     // Clear local storage
-    localStorage.removeItem(getLocalStorageKey());
+    const localStorageKey = getYDocKey();
+    localStorage.removeItem(localStorageKey);
     
     toast.success('文档已清空');
     setShowClearDialog(false);
@@ -349,10 +479,18 @@ export function PlateEditor({ note }: Props) {
             ) : (
               <>
                 <Save className="h-4 w-4" />
-                保存笔记
+                {isOffline ? '离线保存' : '保存笔记'}
               </>
             )}
           </Button>
+          
+          {/* 离线状态指示器 */}
+          {isOffline && (
+            <div className="flex items-center gap-1 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+              <Database className="h-3 w-3" />
+              离线
+            </div>
+          )}
         </div>
 
         {/* 清空和删除按钮 */}
