@@ -82,6 +82,18 @@ const NoteCard = ({ note, isSelected = false, onSelect, isEditMode = false }: Pr
           <div className="text-sm text-muted-foreground line-clamp-4">
             {plainText.substring(0, 120)}{plainText.length > 120 ? '...' : ''}
           </div>
+          {note.tags && note.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {note.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-full"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
         </CardContent>
         <CardFooter className="pt-2 border-t border-border">
           <span className="text-xs text-primary font-medium hover:underline">

@@ -35,6 +35,8 @@ export function PlateEditor({ note }: Props) {
   const [showClearDialog, setShowClearDialog] = React.useState(false);
   const [isOffline, setIsOffline] = React.useState(!navigator.onLine);
   const [isYjsReady, setIsYjsReady] = React.useState(false);
+  const [tags, setTags] = React.useState<string[]>(note?.tags || []);
+  const [tagInput, setTagInput] = React.useState('');
   
   // Yjs相关状态
   const yDocRef = React.useRef<Y.Doc | null>(null);
@@ -199,6 +201,27 @@ export function PlateEditor({ note }: Props) {
     return () => clearTimeout(debounceTimer);
   }, [editor?.children]);
 
+  // 添加标签
+  const addTag = () => {
+    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+      setTags([...tags, tagInput.trim()]);
+      setTagInput('');
+    }
+  };
+
+  // 删除标签
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  // 处理标签输入框的按键事件
+  const handleTagInputKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addTag();
+    }
+  };
+
   // Save note to Supabase
   const saveNote = async (isManualSave = false) => {
     if (!user) {
@@ -217,7 +240,7 @@ export function PlateEditor({ note }: Props) {
     if (isManualSave) setSaving(true);
     try {
       const { title, content } = extractNoteData();
-      console.log('提取的笔记数据:', { title, content });
+      console.log('提取的笔记数据:', { title, content, tags });
 
       // 确保title和content至少有一个非空
       if (!title.trim() && !content.trim()) {
@@ -228,7 +251,7 @@ export function PlateEditor({ note }: Props) {
       if (note) {
         // Update existing note
         console.log('更新现有笔记:', note.id);
-        const updatedNote = await updateNote(note.id, title, content);
+        const updatedNote = await updateNote(note.id, title, content, tags);
         console.log('笔记已更新:', updatedNote);
         if (isManualSave) toast.success('笔记已更新');
         // Clear local storage for new note
@@ -237,7 +260,7 @@ export function PlateEditor({ note }: Props) {
       } else {
         // Create new note
         console.log('创建新笔记:', user.id);
-        const newNote = await createNote(title, content);
+        const newNote = await createNote(title, content, tags);
         console.log('新笔记已创建:', newNote);
         if (isManualSave) toast.success('笔记已保存');
         // Clear local storage for new note
@@ -451,7 +474,34 @@ export function PlateEditor({ note }: Props) {
 
   return (
     <Plate editor={editor}>
-      <EditorContainer className="relative w-full max-w-full m-0">
+      {/* 标签输入区域 */}
+      <div className="border-b border-border px-8 py-3 sticky top-10 z-20 w-[80vw]">
+        <div className="flex flex-wrap items-center gap-2">
+          {tags.map((tag) => (
+            <span
+              key={tag}
+              className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded-full text-sm"
+            >
+              {tag}
+              <button
+                onClick={() => removeTag(tag)}
+                className="hover:text-primary/70 focus:outline-none"
+              >
+                ✕
+              </button>
+            </span>
+          ))}
+          <input
+            type="text"
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={handleTagInputKeyDown}
+            placeholder="添加标签..."
+            className="flex-1 max-w-xs px-2 py-1 border border-input rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+          />
+        </div>
+      </div>
+      <EditorContainer className="relative w-full max-w-full m-0 mt-0">
         <Editor 
           className="min-h-[500px] min-w-[70vw] w-full max-w-full mx-5 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-b-lg bg-background text-sm"
         />

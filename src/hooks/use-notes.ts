@@ -279,7 +279,7 @@ export function useNotes() {
 
   
   // 创建新笔记（支持离线创建）
-  const createNote = async (title: string, content: string) => {
+  const createNote = async (title: string, content: string, tags: string[] = []) => {
     if (!user) {
       throw new Error('User not authenticated');
     }
@@ -304,6 +304,7 @@ export function useNotes() {
         user_id: user.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        tags,
       };
       
       // 同步到 Yjs 文档
@@ -321,6 +322,7 @@ export function useNotes() {
             id: newNote.id,
             title,
             content,
+            tags,
             user_id: user.id,
             created_at: newNote.created_at,
             updated_at: newNote.updated_at,
@@ -357,7 +359,7 @@ export function useNotes() {
   };
 
   // 更新笔记（离线时更新本地缓存，在线时同步到云端）
-  const updateNote = async (id: string, title: string, content: string) => {
+  const updateNote = async (id: string, title: string, content: string, tags?: string[]) => {
     if (!user) {
       throw new Error('User not authenticated');
     }
@@ -373,6 +375,7 @@ export function useNotes() {
           ...(existingNote as Note),
           title,
           content,
+          tags: tags !== undefined ? tags : (existingNote as Note).tags || [],
           updated_at: new Date().toISOString(),
         };
         
@@ -389,6 +392,7 @@ export function useNotes() {
           ...updatedNote,
           title,
           content,
+          tags: tags !== undefined ? tags : updatedNote.tags || [],
           updated_at: new Date().toISOString(),
         };
       }
@@ -398,13 +402,21 @@ export function useNotes() {
     setIsSyncing(true);
     
     try {
+      // 准备更新数据
+      const updateData: any = {
+        title,
+        content,
+        updated_at: new Date().toISOString(),
+      };
+      
+      // 如果提供了tags参数，则包含在更新中
+      if (tags !== undefined) {
+        updateData.tags = tags;
+      }
+      
       const { data, error } = await supabase
         .from('notes')
-        .update({
-          title,
-          content,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', id)
         .eq('user_id', user.id)  // 添加用户权限验证
         .select('*')
@@ -489,9 +501,9 @@ export function useNotes() {
     }
   };
 
-  // 搜索笔记（支持离线搜索）
-  const searchNotes = useCallback((query: string) => {
-    if (!query.trim()) {
+  // 搜索笔记（支持离线搜索和标签筛选）
+  const searchNotes = useCallback((query: string, selectedTags: string[] = []) => {
+    if (!query.trim() && selectedTags.length === 0) {
       setSearchResults([]);
       return [];
     }
@@ -518,12 +530,27 @@ export function useNotes() {
         contentMatch = note.content?.toLowerCase().includes(query.toLowerCase()) || false;
       }
       
-      return titleMatch || contentMatch;
+      // 标签筛选
+      const tagMatch = selectedTags.length === 0 || 
+        (note.tags && selectedTags.every(tag => note.tags!.includes(tag)));
+      
+      return (titleMatch || contentMatch) && tagMatch;
     });
     
     setSearchResults(results);
     setError(null); // 清除之前的错误
     return results;
+  }, [notes]);
+
+  // 获取所有可用标签
+  const getAllTags = useCallback(() => {
+    const tagsSet = new Set<string>();
+    notes.forEach(note => {
+      if (note.tags) {
+        note.tags.forEach(tag => tagsSet.add(tag));
+      }
+    });
+    return Array.from(tagsSet).sort();
   }, [notes]);
 
   return {
@@ -536,5 +563,6 @@ export function useNotes() {
     updateNote,
     deleteNotes,
     searchNotes,
+    getAllTags,
   };
 }

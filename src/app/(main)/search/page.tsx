@@ -10,31 +10,53 @@ import { useNotes } from '@/hooks/use-notes';
 export default function SearchPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
-  const { notes, loading, error, searchNotes, searchResults } = useNotes();
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [allTags, setAllTags] = useState<string[]>([]);
+  const { notes, loading, error, searchNotes, searchResults, getAllTags } = useNotes();
+
+  // 获取所有标签
+  React.useEffect(() => {
+    const tags = getAllTags();
+    setAllTags(tags);
+  }, [notes, getAllTags]);
   
   // 使用防抖钩子，延迟300ms执行搜索
   const debouncedQuery = useDebounce(searchQuery, 300);
 
-  // 当防抖后的搜索关键词变化时自动触发搜索
+  // 当防抖后的搜索关键词或选中标签变化时自动触发搜索
   useEffect(() => {
-    if (debouncedQuery.trim()) {
+    if (debouncedQuery.trim() || selectedTags.length > 0) {
       setSearching(true);
       // 使用从useNotes返回的searchNotes函数来更新搜索结果
-      searchNotes(debouncedQuery);
+      searchNotes(debouncedQuery, selectedTags);
       setTimeout(() => setSearching(false), 300);
     } else {
-      // 如果搜索关键词为空，清除搜索结果
+      // 如果搜索关键词和选中标签都为空，清除搜索结果
       searchNotes('');
     }
-  }, [debouncedQuery, notes, searchNotes]);
+  }, [debouncedQuery, selectedTags, notes, searchNotes]);
+
+  // 切换标签选择
+  const toggleTagSelection = (tag: string) => {
+    setSelectedTags(prev => {
+      if (prev.includes(tag)) {
+        return prev.filter(t => t !== tag);
+      } else {
+        return [...prev, tag];
+      }
+    });
+  };
+
+  // 清除所有选中标签
+  const clearSelectedTags = () => {
+    setSelectedTags([]);
+  };
 
   const handleSearch = () => {
     // 手动搜索时，直接使用当前输入的关键词，不经过防抖
-    if (searchQuery.trim()) {
-      setSearching(true);
-      searchNotes(searchQuery);
-      setTimeout(() => setSearching(false), 300); // 添加短暂延迟以显示搜索动画
-    }
+    setSearching(true);
+    searchNotes(searchQuery, selectedTags);
+    setTimeout(() => setSearching(false), 300); // 添加短暂延迟以显示搜索动画
   };
 
   const handleClear = () => {
@@ -103,6 +125,38 @@ export default function SearchPage() {
             搜索
           </Button>
         </div>
+        
+        {/* 标签筛选 */}
+        <div className="mt-6 max-w-3xl mx-auto">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm font-medium">标签筛选:</span>
+            {selectedTags.length > 0 && (
+              <Button 
+                variant="ghost"
+                size="sm"
+                onClick={clearSelectedTags}
+                className="h-7 px-2"
+              >
+                清除筛选
+              </Button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {allTags.length > 0 ? (
+              allTags.map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => toggleTagSelection(tag)}
+                  className={`px-3 py-1 text-sm rounded-full transition-all duration-200 ${selectedTags.includes(tag) ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                >
+                  {tag}
+                </button>
+              ))
+            ) : (
+              <span className="text-sm text-muted-foreground">暂无标签</span>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="max-w-7xl mx-auto">
@@ -127,11 +181,23 @@ export default function SearchPage() {
               <div className="flex flex-col items-center justify-center p-12">
                 <div className="text-xl text-muted-foreground mb-4">未找到匹配的笔记</div>
                 <p className="text-muted-foreground text-center mb-4">
-                  尝试使用不同的关键词或检查您的拼写
+                  {selectedTags.length > 0 ? 
+                    '尝试使用不同的关键词或标签组合' : 
+                    '尝试使用不同的关键词或检查您的拼写'
+                  }
                 </p>
-                <Button variant="outline" onClick={handleClear}>
-                  清除搜索
-                </Button>
+                <div className="flex gap-2">
+                  {searchQuery && (
+                    <Button variant="outline" onClick={handleClear}>
+                      清除搜索
+                    </Button>
+                  )}
+                  {selectedTags.length > 0 && (
+                    <Button variant="outline" onClick={clearSelectedTags}>
+                      清除标签筛选
+                    </Button>
+                  )}
+                </div>
               </div>
             )
           )

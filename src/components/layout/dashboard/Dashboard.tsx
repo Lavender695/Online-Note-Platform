@@ -10,9 +10,41 @@ import { toast } from 'sonner'
 type Props = {}
 
 const Dashboard = (props: Props) => {
-  const { notes, loading, error, deleteNotes } = useNotes()
+  const { notes, loading, error, deleteNotes, getAllTags } = useNotes()
   const [isEditMode, setIsEditMode] = useState(false)
   const [selectedNotes, setSelectedNotes] = useState<string[]>([])
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [allTags, setAllTags] = useState<string[]>([])
+
+  // 获取所有标签
+  React.useEffect(() => {
+    const tags = getAllTags()
+    setAllTags(tags)
+    console.log('Dashboard获取的所有标签:', tags)
+  }, [notes, getAllTags])
+
+  // 筛选后的笔记
+  const filteredNotes = selectedTags.length === 0
+    ? notes
+    : notes.filter(note => 
+        note.tags && selectedTags.every(tag => note.tags.includes(tag))
+      )
+
+  // 切换标签选择
+  const toggleTagSelection = (tag: string) => {
+    setSelectedTags(prev => {
+      if (prev.includes(tag)) {
+        return prev.filter(t => t !== tag)
+      } else {
+        return [...prev, tag]
+      }
+    })
+  }
+
+  // 清除所有选中标签
+  const clearSelectedTags = () => {
+    setSelectedTags([])
+  }
 
   if (loading) {
     return (
@@ -66,6 +98,44 @@ const Dashboard = (props: Props) => {
           <p className="text-muted-foreground mt-1">查看和管理您的所有笔记</p>
         </div>
         
+        {/* 标签筛选 */}
+        <div className="mt-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm font-medium">标签筛选:</span>
+            {selectedTags.length > 0 && (
+              <Button 
+                variant="ghost"
+                size="sm"
+                onClick={clearSelectedTags}
+                className="h-7 px-2"
+              >
+                清除筛选
+              </Button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {allTags.length > 0 ? (
+              allTags.map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => toggleTagSelection(tag)}
+                  className={cn(
+                    'px-3 py-1 text-sm rounded-full transition-all duration-200',
+                    selectedTags.includes(tag)
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  )}
+                >
+                  {tag}
+                </button>
+              ))
+            ) : (
+              <span className="text-sm text-muted-foreground">暂无标签</span>
+            )}
+          </div>
+        </div>
+
+        {/* 编辑模式按钮 */}
         {isEditMode ? (
           <div className="flex gap-2">
             <Button 
@@ -98,9 +168,9 @@ const Dashboard = (props: Props) => {
         )}
       </div>
       
-      {notes.length > 0 ? (
+      {filteredNotes.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {notes.map(note => (
+          {filteredNotes.map(note => (
             <NoteCard 
               key={note.id} 
               note={note} 
@@ -112,10 +182,22 @@ const Dashboard = (props: Props) => {
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center p-12 bg-muted rounded-lg border border-dashed border-border">
-          <div className="text-xl text-muted-foreground mb-4">暂无笔记</div>
-          <a href="/editor" className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
-            创建第一个笔记
-          </a>
+          <div className="text-xl text-muted-foreground mb-4">
+            {selectedTags.length > 0 ? '没有匹配筛选条件的笔记' : '暂无笔记'}
+          </div>
+          {selectedTags.length > 0 ? (
+            <Button 
+              variant="outline"
+              onClick={clearSelectedTags}
+              className="mt-2"
+            >
+              清除筛选
+            </Button>
+          ) : (
+            <a href="/editor" className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+              创建第一个笔记
+            </a>
+          )}
         </div>
       )}
     </div>
