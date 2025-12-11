@@ -1,15 +1,17 @@
 # 在线笔记平台
 
-一个功能丰富的在线笔记应用，提供富文本编辑、笔记管理、用户认证等功能，基于现代Web技术栈构建。
+一个功能丰富的在线笔记应用，提供富文本编辑、笔记管理、用户认证、**实时协作编辑**等功能，基于现代Web技术栈构建。
 
 ## 功能特性
 
 ### 核心功能
 - ✅ **富文本编辑**：使用Plate.js构建的强大编辑器，支持多种格式和功能
+- ✅ **实时协作编辑**：使用Liveblocks实现多人实时协作编辑笔记
 - ✅ **笔记管理**：创建、编辑、删除和搜索笔记
 - ✅ **用户认证**：安全的登录和注册系统
+- ✅ **权限管理**：笔记所有者可以授权其他用户查看或编辑笔记
 - ✅ **本地自动保存**：实时保存编辑内容到本地存储，防止数据丢失
-- ✅ **云端同步**：自动将笔记同步到Supabase数据库
+- ✅ **云端同步**：自动将笔记同步到Supabase数据库（每10秒自动快照）
 - ✅ **响应式设计**：适配各种设备和屏幕尺寸
 
 ### 高级功能
@@ -18,6 +20,7 @@
 - 🔍 **搜索功能**：快速查找笔记
 - ⚙️ **设置面板**：个性化应用设置
 - 📱 **移动友好**：支持移动设备编辑
+- 🔄 **实时同步**：使用CRDT技术保证多人编辑时的数据一致性
 
 ## 技术栈
 
@@ -25,6 +28,7 @@
 - **框架**: Next.js 16
 - **UI库**: React 18
 - **编辑器**: Plate.js (富文本编辑器)
+- **协作编辑**: Liveblocks + Yjs
 - **UI组件**: @shadcn/ui, Radix UI
 - **样式**: Tailwind CSS
 - **状态管理**: React Hooks
@@ -34,6 +38,7 @@
 - **API**: Next.js API Routes
 - **数据库**: Supabase
 - **认证**: Supabase Auth
+- **协作服务**: Liveblocks
 - **文件上传**: UploadThing
 - **服务器**: Express.js (可选)
 
@@ -101,7 +106,10 @@ pnpm install
 ```
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+LIVEBLOCKS_SECRET_KEY=your-liveblocks-secret-key
 ```
+
+参考 `.env.example` 文件查看所有环境变量。
 
 2. 配置 Supabase 数据库：
    - 创建 `notes` 表，包含以下字段：
@@ -111,7 +119,15 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
      - `user_id` (UUID, 外键关联用户)
      - `created_at` (时间戳)
      - `updated_at` (时间戳)
-   - 配置行级安全策略，确保用户只能访问自己的笔记
+   - 创建 `note_permissions` 表用于笔记共享：
+     - 运行 `database/migrations/001_create_note_permissions.sql` 中的SQL脚本
+   - 配置行级安全策略，确保用户只能访问自己的笔记或被授权的笔记
+
+3. 配置 Liveblocks：
+   - 访问 [Liveblocks Dashboard](https://liveblocks.io/dashboard)
+   - 创建新项目或使用现有项目
+   - 获取 Secret Key 并添加到 `.env.local`
+   - 详细配置说明请参考 `LIVEBLOCKS_INTEGRATION.md`
 
 ### 运行
 
