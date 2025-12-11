@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // 更新头像（如果Supabase Storage已配置）
       if (data.avatar_url) {
-        await supabase.from('profiles').upsert(
+        await supabase.from('users').upsert(
           { id: user.id, avatar_url: data.avatar_url },
           { onConflict: 'id' }
         );
