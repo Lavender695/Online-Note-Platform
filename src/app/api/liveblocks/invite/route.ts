@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     // Find the user to invite by email
     // Since we don't have direct access to auth.users, we'll use a different approach
     // Try to find user ID by querying with service role
-    const { data: authData, error: authQueryError } = await supabase.auth.admin.listUsers();
+    const { data: authData } = await supabase.auth.admin.listUsers();
     
     let invitedUserId = null;
     if (authData?.users) {

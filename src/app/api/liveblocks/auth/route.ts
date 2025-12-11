@@ -66,7 +66,6 @@ export async function POST(request: NextRequest) {
 
     // If not owner, check if user has shared access
     let hasAccess = isOwner;
-    let permission = isOwner ? 'write' : 'read';
 
     if (!isOwner) {
       const { data: share, error: shareError } = await supabase
@@ -78,7 +77,6 @@ export async function POST(request: NextRequest) {
 
       if (share && !shareError) {
         hasAccess = true;
-        permission = share.permission;
       }
     }
 

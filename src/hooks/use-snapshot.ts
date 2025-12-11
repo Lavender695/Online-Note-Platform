@@ -2,28 +2,30 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { useRoom } from '@/lib/liveblocks.config';
 
 interface UseSnapshotOptions {
   noteId: string;
   enabled?: boolean;
   interval?: number; // in milliseconds, default 10000 (10s)
+  getEditorContent?: () => unknown; // Function to get current editor content
 }
 
-export function useSnapshot({ noteId, enabled = true, interval = 10000 }: UseSnapshotOptions) {
+export function useSnapshot({ 
+  noteId, 
+  enabled = true, 
+  interval = 10000,
+  getEditorContent
+}: UseSnapshotOptions) {
   const { session } = useAuth();
-  const room = useRoom();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastSnapshotRef = useRef<string>('');
 
   const saveSnapshot = useCallback(async () => {
-    if (!session || !enabled || !room) return;
+    if (!session || !enabled || !getEditorContent) return;
 
     try {
-      // Get the current state from Liveblocks room
-      // For now, we'll use the storage state
-      const storage = await room.getStorage();
-      const snapshotData = storage.root.toJSON();
+      // Get the current editor content
+      const snapshotData = getEditorContent();
 
       // Only save if data has changed
       const currentSnapshot = JSON.stringify(snapshotData);
@@ -52,11 +54,11 @@ export function useSnapshot({ noteId, enabled = true, interval = 10000 }: UseSna
     } catch (error) {
       console.error('Error saving snapshot:', error);
     }
-  }, [session, enabled, noteId, room]);
+  }, [session, enabled, noteId, getEditorContent]);
 
   // Set up periodic snapshot saving
   useEffect(() => {
-    if (!enabled || !session || !room) return;
+    if (!enabled || !session || !getEditorContent) return;
 
     // Save initial snapshot
     saveSnapshot();
@@ -79,7 +81,7 @@ export function useSnapshot({ noteId, enabled = true, interval = 10000 }: UseSna
       // Save final snapshot on cleanup
       saveSnapshot();
     };
-  }, [enabled, session, room, interval, saveSnapshot]);
+  }, [enabled, session, interval, saveSnapshot, getEditorContent]);
 
   const loadLatestSnapshot = useCallback(async () => {
     if (!session || !noteId) return null;

@@ -36,6 +36,7 @@ export function ShareDialog({ noteId, open, onOpenChange }: ShareDialogProps) {
     if (open && session) {
       loadShares();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, session]);
 
   const loadShares = async () => {

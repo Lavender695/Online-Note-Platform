@@ -103,6 +103,7 @@ export function PlateEditor({ note }: Props) {
     noteId: note?.id || '',
     enabled: snapshotEnabled,
     interval: 10000, // 10 seconds
+    getEditorContent: () => editor?.children || [],
   });
 
   // 检查用户认证状态
