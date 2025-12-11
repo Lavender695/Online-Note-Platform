@@ -13,8 +13,12 @@ import { Note } from '@/types/note';
 import { useNotes } from '@/hooks/use-notes';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
-import { Save, Cloud, Trash2, Eraser } from 'lucide-react';
+import { Save, Cloud, Trash2, Eraser, Users } from 'lucide-react';
 import type { MyValue, RichText } from '@/components/plate-types';
+import { CollaborativeEditorProvider } from '@/components/collaboration/collaborative-editor-provider';
+import { Collaborators } from '@/components/collaboration/collaborators';
+import { ShareDialog } from '@/components/collaboration/share-dialog';
+import { useSnapshot } from '@/hooks/use-snapshot';
 
 type Props = {
   note?: Note;
@@ -28,6 +32,7 @@ export function PlateEditor({ note }: Props) {
   const [userActivityTime, setUserActivityTime] = React.useState(Date.now());
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [showClearDialog, setShowClearDialog] = React.useState(false);
+  const [showShareDialog, setShowShareDialog] = React.useState(false);
   
   // 检查用户状态和笔记列表
   React.useEffect(() => {
@@ -90,6 +95,14 @@ export function PlateEditor({ note }: Props) {
   const editor = usePlateEditor({
     plugins: EditorKit,
     value: getEditorValue(),
+  });
+
+  // Initialize snapshot hook for existing notes (not for new notes)
+  const snapshotEnabled = !!note?.id;
+  useSnapshot({
+    noteId: note?.id || '',
+    enabled: snapshotEnabled,
+    interval: 10000, // 10 seconds
   });
 
   // 检查用户认证状态
@@ -319,12 +332,19 @@ export function PlateEditor({ note }: Props) {
     setShowClearDialog(false);
   };
 
-  return (
+  const editorContent = (
     <Plate editor={editor}>
       <EditorContainer className="relative w-full max-w-full m-0">
         <Editor 
           className="min-h-[500px] min-w-[70vw] w-full max-w-full mx-5 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-b-lg bg-background text-sm"
         />
+        
+        {/* Collaborators display - top right */}
+        {note?.id && (
+          <div className="absolute top-2 right-4 z-10">
+            <Collaborators />
+          </div>
+        )}
         
         {/* 最后保存时间 - 右上角（toolbar下方） */}
         {lastSaved && (
@@ -335,6 +355,18 @@ export function PlateEditor({ note }: Props) {
         
         {/* 操作按钮区域 */}
         <div className="fixed bottom-8 right-8 flex items-center gap-2 z-10">
+          {/* Share button - only for existing notes */}
+          {note?.id && (
+            <Button 
+              onClick={() => setShowShareDialog(true)}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Users className="h-4 w-4" />
+              分享
+            </Button>
+          )}
+          
           {/* 保存按钮 */}
           <Button 
             onClick={() => saveNote(true)}
@@ -412,6 +444,24 @@ export function PlateEditor({ note }: Props) {
           )}
         </div>
       </EditorContainer>
+      
+      {/* Share dialog */}
+      {note?.id && (
+        <ShareDialog 
+          noteId={note.id}
+          open={showShareDialog}
+          onOpenChange={setShowShareDialog}
+        />
+      )}
     </Plate>
+  );
+
+  // Wrap with collaborative provider only for existing notes
+  return note?.id ? (
+    <CollaborativeEditorProvider noteId={note.id}>
+      {editorContent}
+    </CollaborativeEditorProvider>
+  ) : (
+    editorContent
   );
 }

@@ -1,22 +1,23 @@
 import { createClient } from '@liveblocks/client';
 import { createRoomContext } from '@liveblocks/react';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 // Create Liveblocks client
 export const liveblocksClient = createClient({
   publicApiKey: process.env.NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY!,
   // Use custom auth endpoint
   authEndpoint: async (room) => {
-    // Get the current user's Supabase access token
-    const token = localStorage.getItem('supabase.auth.token');
-    let accessToken = '';
+    // Get the current user's Supabase access token from Supabase client
+    const supabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_KEY!
+    );
     
-    if (token) {
-      try {
-        const parsed = JSON.parse(token);
-        accessToken = parsed.access_token || parsed;
-      } catch (e) {
-        console.error('Failed to parse token:', e);
-      }
+    const { data: { session } } = await supabase.auth.getSession();
+    const accessToken = session?.access_token || '';
+
+    if (!accessToken) {
+      throw new Error('No access token available');
     }
 
     // Get noteId from room name (format: "note:uuid")
