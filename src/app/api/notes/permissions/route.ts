@@ -86,23 +86,14 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get user details for each permission
-    const permissionsWithUsers = await Promise.all(
-      (permissions || []).map(async (perm) => {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('id, email')
-          .eq('id', perm.user_id)
-          .single();
+    if (!permissions || permissions.length === 0) {
+      return NextResponse.json({ permissions: [] });
+    }
 
-        return {
-          ...perm,
-          user: userData,
-        };
-      })
-    );
-
-    return NextResponse.json({ permissions: permissionsWithUsers });
+    // Note: In Supabase, we can't directly query auth.users from the client
+    // We'll return just the permission records and let the frontend
+    // handle user data display if needed, or create a public profiles table
+    return NextResponse.json({ permissions });
   } catch (error) {
     console.error('Error fetching permissions:', error);
     return NextResponse.json(
@@ -118,7 +109,7 @@ export async function GET(req: NextRequest) {
  * 
  * Body: {
  *   noteId: string,
- *   userEmail: string,
+ *   userId: string,
  *   permissionType: 'read' | 'write'
  * }
  */
@@ -145,11 +136,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Parse request body
-    const { noteId, userEmail, permissionType } = await req.json();
+    const { noteId, userId, permissionType } = await req.json();
 
-    if (!noteId || !userEmail || !permissionType) {
+    if (!noteId || !userId || !permissionType) {
       return NextResponse.json(
-        { error: 'Missing required fields: noteId, userEmail, permissionType' },
+        { error: 'Missing required fields: noteId, userId, permissionType' },
         { status: 400 }
       );
     }
@@ -182,34 +173,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Find the user by email
-    const { data: targetUser, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', userEmail)
-      .single();
-
-    if (userError || !targetUser) {
-      return NextResponse.json(
-        { error: 'User not found with that email' },
-        { status: 404 }
-      );
-    }
-
     // Check if owner is trying to share with themselves
-    if (targetUser.id === user.id) {
+    if (userId === user.id) {
       return NextResponse.json(
         { error: 'Cannot share note with yourself' },
         { status: 400 }
       );
     }
 
+    // Validate that the target user exists by trying to get their auth record
+    // We can't query auth.users directly, so we'll rely on foreign key constraint
+    // If the user_id doesn't exist, the insert will fail with FK violation
+
     // Insert or update permission
     const { data: permission, error: permError } = await supabase
       .from('note_permissions')
       .upsert({
         note_id: noteId,
-        user_id: targetUser.id,
+        user_id: userId,
         permission_type: permissionType,
         granted_by: user.id,
       }, {
@@ -219,6 +200,13 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (permError) {
+      // Check if it's a foreign key violation
+      if (permError.code === '23503') {
+        return NextResponse.json(
+          { error: 'User not found with that user_id' },
+          { status: 404 }
+        );
+      }
       return NextResponse.json(
         { error: permError.message },
         { status: 500 }

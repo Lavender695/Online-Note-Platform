@@ -86,14 +86,14 @@ export async function POST(req: NextRequest) {
 
     // Check if user has access to this note
     const isOwner = note.user_id === user.id;
+    let hasWriteAccess = isOwner;
 
-    // TODO: In the future, check for shared access permissions
-    // For now, only the owner can access
+    // Check for shared access permissions
     if (!isOwner) {
       // Check if there's a note_permissions table for shared access
       const { data: permission } = await supabase
         .from('note_permissions')
-        .select('*')
+        .select('permission_type')
         .eq('note_id', noteId)
         .eq('user_id', user.id)
         .maybeSingle();
@@ -104,6 +104,9 @@ export async function POST(req: NextRequest) {
           { status: 403 }
         );
       }
+
+      // Set write access based on permission type
+      hasWriteAccess = permission.permission_type === 'write';
     }
 
     // Create Liveblocks session with appropriate permissions
@@ -116,8 +119,8 @@ export async function POST(req: NextRequest) {
     });
 
     // Grant access to the specific room
-    // Owners get full write access, viewers get read access only
-    session.allow(roomId, isOwner ? session.FULL_ACCESS : session.READ_ACCESS);
+    // Users with write permission get full access, others get read access only
+    session.allow(roomId, hasWriteAccess ? session.FULL_ACCESS : session.READ_ACCESS);
 
     // Authorize the session
     const { status, body } = await session.authorize();

@@ -1,5 +1,6 @@
 import { createClient } from '@liveblocks/client';
 import { createRoomContext } from '@liveblocks/react';
+import { supabase } from './supabase';
 
 /**
  * Liveblocks Client Configuration
@@ -11,12 +12,7 @@ import { createRoomContext } from '@liveblocks/react';
 // Create Liveblocks client
 const client = createClient({
   authEndpoint: async (room) => {
-    // Get the Supabase access token from the session
-    const { createClient: createSupabaseClient } = await import('@supabase/supabase-js');
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_KEY || '';
-    const supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey);
-    
+    // Get the Supabase access token from the current session
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.access_token) {

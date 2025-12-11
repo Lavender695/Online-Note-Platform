@@ -72,15 +72,17 @@ function CollaborativeEditorInner({ note, children }: Props) {
 
     const snapshotInterval = setInterval(async () => {
       try {
-        // Get the current document state from the Yjs shared type
-        const sharedType = yDoc.get('content', Y.XmlText) as Y.XmlText;
-        const content = sharedType.toJSON();
+        // Get the editor's current content directly
+        // We'll need to access the editor instance from the parent component
+        // For now, save the Yjs document state
+        const state = Y.encodeStateAsUpdate(yDoc);
+        const content = Array.from(state);
         
         // Save to Supabase
         await supabase
           .from('notes')
           .update({ 
-            content: JSON.stringify(content),
+            content: JSON.stringify({ yjsState: content }),
             updated_at: new Date().toISOString(),
           })
           .eq('id', note.id);
