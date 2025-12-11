@@ -7,14 +7,13 @@ import { Plate, usePlateEditor } from 'platejs/react';
 
 import { EditorKit } from '@/components/editor-kit';
 import { Editor, EditorContainer } from '@/components/ui/editor';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Note } from '@/types/note';
 import { useNotes } from '@/hooks/use-notes';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
-import { Save, Cloud, Trash2, Eraser } from 'lucide-react';
 import type { MyValue, RichText } from '@/components/plate-types';
+import { CollaborativeEditorProvider } from '@/components/collaborative-editor-provider';
+import { EditorActions } from '@/components/editor-actions';
 
 type Props = {
   note?: Note;
@@ -321,97 +320,45 @@ export function PlateEditor({ note }: Props) {
 
   return (
     <Plate editor={editor}>
-      <EditorContainer className="relative w-full max-w-full m-0">
-        <Editor 
-          className="min-h-[500px] min-w-[70vw] w-full max-w-full mx-5 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-b-lg bg-background text-sm"
-        />
-        
-        {/* 最后保存时间 - 右上角（toolbar下方） */}
-        {lastSaved && (
-          <div className="absolute top-14 right-4 z-10 text-xs text-muted-foreground whitespace-nowrap">
-            自动保存于: {lastSaved.toLocaleTimeString()}
-          </div>
-        )}
-        
-        {/* 操作按钮区域 */}
-        <div className="fixed bottom-8 right-8 flex items-center gap-2 z-10">
-          {/* 保存按钮 */}
-          <Button 
-            onClick={() => saveNote(true)}
-            disabled={saving}
-            className="flex items-center gap-2 bg-primary hover:bg-primary/90"
-          >
-            {saving ? (
-              <>
-                <Cloud className="h-4 w-4 animate-spin" />
-                保存中...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4" />
-                保存笔记
-              </>
-            )}
-          </Button>
-        </div>
-
-        {/* 清空和删除按钮 */}
-        <div className="fixed bottom-8 left-8 flex gap-2 z-10 transition-all duration-200 button-container-bottom-left">
-          {/* 清空文档按钮 */}
-          <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
-            <DialogTrigger asChild>
-              <Button variant="secondary" className="flex items-center gap-2">
-                <Eraser className="h-4 w-4" />
-                清空文档
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>确认清空</DialogTitle>
-                <DialogDescription>
-                  您确定要清空当前文档吗？此操作无法撤销，但笔记本身不会被删除。
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button variant="ghost" onClick={() => setShowClearDialog(false)}>
-                  取消
-                </Button>
-                <Button variant="destructive" onClick={handleClearDocument}>
-                  确认清空
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          {/* 删除笔记按钮 */}
-          {note && (
-            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-              <DialogTrigger asChild>
-                <Button variant="destructive" className="flex items-center gap-2">
-                  <Trash2 className="h-4 w-4" />
-                  删除笔记
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>确认删除</DialogTitle>
-                  <DialogDescription>
-                    您确定要删除这篇笔记吗？此操作无法撤销。
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <Button variant="ghost" onClick={() => setShowDeleteDialog(false)}>
-                    取消
-                  </Button>
-                  <Button variant="destructive" onClick={handleDeleteNote}>
-                    确认删除
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          )}
-        </div>
-      </EditorContainer>
+      {note ? (
+        <CollaborativeEditorProvider note={note}>
+          <EditorContainer className="relative w-full max-w-full m-0">
+            <Editor 
+              className="min-h-[500px] min-w-[70vw] w-full max-w-full mx-5 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-b-lg bg-background text-sm"
+            />
+            <EditorActions
+              note={note}
+              saving={saving}
+              lastSaved={lastSaved}
+              showDeleteDialog={showDeleteDialog}
+              showClearDialog={showClearDialog}
+              setShowDeleteDialog={setShowDeleteDialog}
+              setShowClearDialog={setShowClearDialog}
+              onSave={() => saveNote(true)}
+              onDelete={handleDeleteNote}
+              onClear={handleClearDocument}
+            />
+          </EditorContainer>
+        </CollaborativeEditorProvider>
+      ) : (
+        <EditorContainer className="relative w-full max-w-full m-0">
+          <Editor 
+            className="min-h-[500px] min-w-[70vw] w-full max-w-full mx-5 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-b-lg bg-background text-sm"
+          />
+          <EditorActions
+            note={note}
+            saving={saving}
+            lastSaved={lastSaved}
+            showDeleteDialog={showDeleteDialog}
+            showClearDialog={showClearDialog}
+            setShowDeleteDialog={setShowDeleteDialog}
+            setShowClearDialog={setShowClearDialog}
+            onSave={() => saveNote(true)}
+            onDelete={handleDeleteNote}
+            onClear={handleClearDocument}
+          />
+        </EditorContainer>
+      )}
     </Plate>
   );
 }
