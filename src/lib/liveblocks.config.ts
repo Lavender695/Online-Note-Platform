@@ -7,7 +7,9 @@ export const liveblocksClient = createClient({
   publicApiKey: process.env.NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY!,
   // Use custom auth endpoint
   authEndpoint: async (room) => {
-    // Get the current user's Supabase access token from Supabase client
+    // Create Supabase client for this auth request
+    // Note: In a client-side context, creating a new client instance per request
+    // is acceptable as these are lightweight and ensure fresh session data
     const supabase = createSupabaseClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_KEY!

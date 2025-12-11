@@ -37,7 +37,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Get noteId from request body or query
-    const body = await request.json().catch(() => ({}));
+    const body = await request.json().catch((error) => {
+      console.error('Failed to parse request body:', error);
+      return {};
+    });
     const noteId = body.noteId || request.nextUrl.searchParams.get('noteId');
 
     if (!noteId) {

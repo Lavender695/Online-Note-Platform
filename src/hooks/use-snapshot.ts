@@ -66,9 +66,25 @@ export function useSnapshot({
     // Set up periodic saving
     intervalRef.current = setInterval(saveSnapshot, interval);
 
-    // Save snapshot on unload
+    // Save snapshot on unload - use sendBeacon for reliability
     const handleBeforeUnload = () => {
-      saveSnapshot();
+      // Try to use sendBeacon for more reliable transmission
+      if (navigator.sendBeacon && session) {
+        try {
+          const snapshotData = getEditorContent();
+          const blob = new Blob([JSON.stringify({
+            noteId,
+            snapshotData,
+          })], { type: 'application/json' });
+          
+          navigator.sendBeacon(
+            `/api/liveblocks/snapshot?token=${session.access_token}`,
+            blob
+          );
+        } catch (error) {
+          console.error('Error sending beacon:', error);
+        }
+      }
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);

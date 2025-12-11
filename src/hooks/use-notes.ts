@@ -62,7 +62,7 @@ export function useNotes() {
         setLoading(false);
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        setError('Failed to fetch notes: ' + errorMessage);
+        setError(`Failed to fetch notes: ${errorMessage}`);
         setLoading(false);
       }
     };
@@ -97,7 +97,7 @@ export function useNotes() {
       return data;
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      setError('Failed to create note: ' + errorMessage);
+      setError(`Failed to create note: ${errorMessage}`);
       throw err;
     }
   };
@@ -127,7 +127,7 @@ export function useNotes() {
       return data;
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      setError('Failed to update note: ' + errorMessage);
+      setError(`Failed to update note: ${errorMessage}`);
       throw err;
     }
   };
@@ -152,7 +152,7 @@ export function useNotes() {
       setSearchResults(prev => prev.filter(note => !ids.includes(note.id)));
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      setError('Failed to delete notes: ' + errorMessage);
+      setError(`Failed to delete notes: ${errorMessage}`);
       throw err;
     }
   };
