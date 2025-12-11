@@ -18,23 +18,51 @@ export function useNotes() {
       return;
     }
 
-    // Fetch notes from Supabase
+    // Fetch notes from Supabase (both owned and shared)
     const fetchNotes = async () => {
       try {
-        const { data, error } = await supabase
+        // Get owned notes
+        const { data: ownedNotes, error: ownedError } = await supabase
           .from('notes')
           .select('*')
           .eq('user_id', user.id)
           .order('updated_at', { ascending: false });
 
-        if (error) {
-          throw error;
+        if (ownedError) {
+          throw ownedError;
         }
 
-        setNotes(data || []);
+        // Get shared notes
+        const { data: sharedNoteIds, error: sharedError } = await supabase
+          .from('note_shares')
+          .select('note_id')
+          .eq('shared_with_user_id', user.id);
+
+        let sharedNotes: Note[] = [];
+        if (!sharedError && sharedNoteIds && sharedNoteIds.length > 0) {
+          const noteIds = sharedNoteIds.map(s => s.note_id);
+          const { data, error } = await supabase
+            .from('notes')
+            .select('*')
+            .in('id', noteIds)
+            .order('updated_at', { ascending: false });
+          
+          if (!error && data) {
+            sharedNotes = data;
+          }
+        }
+
+        // Combine and deduplicate notes
+        const allNotes = [...(ownedNotes || []), ...sharedNotes];
+        const uniqueNotes = Array.from(
+          new Map(allNotes.map(note => [note.id, note])).values()
+        );
+        
+        setNotes(uniqueNotes);
         setLoading(false);
-      } catch (err: any) {
-        setError('Failed to fetch notes: ' + err.message);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        setError(`Failed to fetch notes: ${errorMessage}`);
         setLoading(false);
       }
     };
@@ -67,8 +95,9 @@ export function useNotes() {
 
       setNotes(prev => [data, ...prev]);
       return data;
-    } catch (err: any) {
-      setError('Failed to create note: ' + err.message);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Failed to create note: ${errorMessage}`);
       throw err;
     }
   };
@@ -96,8 +125,9 @@ export function useNotes() {
 
       setNotes(prev => prev.map(note => note.id === id ? data : note));
       return data;
-    } catch (err: any) {
-      setError('Failed to update note: ' + err.message);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Failed to update note: ${errorMessage}`);
       throw err;
     }
   };
@@ -120,8 +150,9 @@ export function useNotes() {
       setNotes(prev => prev.filter(note => !ids.includes(note.id)));
       // Also update search results if any are deleted
       setSearchResults(prev => prev.filter(note => !ids.includes(note.id)));
-    } catch (err: any) {
-      setError('Failed to delete notes: ' + err.message);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Failed to delete notes: ${errorMessage}`);
       throw err;
     }
   };
