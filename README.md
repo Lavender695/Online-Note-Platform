@@ -19,6 +19,11 @@
 - ⚙️ **设置面板**：个性化应用设置
 - 📱 **移动友好**：支持移动设备编辑
 
+### AI 功能（基于火山引擎）
+- ✨ **智能续写**：AI 自动续写内容，保持风格一致
+- 📋 **内容摘要**：一键生成内容摘要，快速了解重点
+- 💡 **智能问答**：基于上下文的智能问答功能
+
 ## 技术栈
 
 ### 前端
@@ -37,8 +42,13 @@
 - **文件上传**: UploadThing
 - **服务器**: Express.js (可选)
 
-### AI集成（暂未实现，仍在开发中）
+### AI集成
+- **AI 引擎**: 火山引擎 (Volcano Engine/Doubao)
 - **AI SDK**: @ai-sdk/react
+- **AI 功能**: 
+  - 智能续写 (AI Completion)
+  - 内容摘要 (Summary Generation)
+  - 智能问答 (Context-based Search)
 - **AI助手**: 集成AI命令和 copilots
 
 ## 项目结构
@@ -99,9 +109,19 @@ pnpm install
 
 1. 创建 `.env.local` 文件并添加以下环境变量：
 ```
+# Supabase 配置
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+
+# 火山引擎 AI 配置
+VOLC_API_KEY=your-volcano-engine-api-key
+VOLC_MODEL_ENDPOINT=your-volcano-engine-model-endpoint
 ```
+
+**火山引擎 API 配置说明：**
+- `VOLC_API_KEY`: 你的火山引擎 API 密钥
+- `VOLC_MODEL_ENDPOINT`: 你的火山引擎推理接入点 ID（例如: ep-2024...）
+- 获取方式: 登录[火山引擎控制台](https://console.volcengine.com/)，在"机器学习平台"中创建推理接入点
 
 2. 配置 Supabase 数据库：
    - 创建 `notes` 表，包含以下字段：
@@ -166,6 +186,57 @@ pnpm start
 - **登录**：使用现有账户登录
 - **安全**：使用 Supabase Auth 确保用户数据安全
 
+### AI 功能使用
+
+**使用 AI 工具栏组件**：
+
+```tsx
+import { AIToolbar } from '@/components/ai-toolbar';
+
+// 在你的编辑器组件中
+<AIToolbar
+  content={editorContent}
+  onResult={(result, mode) => {
+    if (mode === 'completion') {
+      // 将 AI 续写的内容插入到编辑器
+      insertTextToEditor(result);
+    } else if (mode === 'summary') {
+      // 显示摘要结果
+      showSummaryDialog(result);
+    }
+  }}
+/>
+```
+
+**使用 useAI Hook**：
+
+```tsx
+import { useAI } from '@/hooks/use-ai';
+
+function MyComponent() {
+  const { generateSummary, complete, search, isLoading, error } = useAI();
+
+  // 生成摘要
+  const handleSummary = async () => {
+    const summary = await generateSummary(content);
+    console.log(summary);
+  };
+
+  // 智能续写
+  const handleCompletion = async () => {
+    const continuation = await complete(content);
+    console.log(continuation);
+  };
+
+  // 智能问答
+  const handleSearch = async () => {
+    const answer = await search('什么是人工智能？', contextText);
+    console.log(answer);
+  };
+}
+```
+
+
 ## API 端点
 
 ### 笔记相关
@@ -174,7 +245,32 @@ pnpm start
 - `PUT /api/notes/:id` - 更新笔记
 - `DELETE /api/notes/:id` - 删除笔记
 
-### AI 相关 (暂未实现，仍在开发中)
+### AI 相关（基于火山引擎）
+- `POST /api/ai` - AI 功能接口，支持多种模式：
+  - **summary**: 生成内容摘要
+    ```json
+    {
+      "mode": "summary",
+      "content": "要总结的内容..."
+    }
+    ```
+  - **completion**: 智能续写
+    ```json
+    {
+      "mode": "completion",
+      "content": "需要续写的内容..."
+    }
+    ```
+  - **search**: 基于上下文的问答
+    ```json
+    {
+      "mode": "search",
+      "query": "问题内容",
+      "context": "可选的上下文信息"
+    }
+    ```
+
+### AI 相关（Plate.js 集成）
 - `POST /api/ai/command` - 执行AI命令
 - `POST /api/ai/copilot` - AI助手功能
 
