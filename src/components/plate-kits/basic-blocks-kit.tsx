@@ -31,7 +31,7 @@ export const BasicBlocksKit = [
       component: H1Element,
     },
     rules: {
-      break: { empty: 'reset' },
+      break: { empty: 'default', default: 'default' },
     },
     shortcuts: { toggle: { keys: 'mod+alt+1' } },
   }),
@@ -40,7 +40,7 @@ export const BasicBlocksKit = [
       component: H2Element,
     },
     rules: {
-      break: { empty: 'reset' },
+      break: { empty: 'default', default: 'default' },
     },
     shortcuts: { toggle: { keys: 'mod+alt+2' } },
   }),
@@ -49,7 +49,7 @@ export const BasicBlocksKit = [
       component: H3Element,
     },
     rules: {
-      break: { empty: 'reset' },
+      break: { empty: 'default', default: 'default' },
     },
     shortcuts: { toggle: { keys: 'mod+alt+3' } },
   }),
@@ -58,7 +58,7 @@ export const BasicBlocksKit = [
       component: H4Element,
     },
     rules: {
-      break: { empty: 'reset' },
+      break: { empty: 'default', default: 'default' },
     },
     shortcuts: { toggle: { keys: 'mod+alt+4' } },
   }),
@@ -67,7 +67,7 @@ export const BasicBlocksKit = [
       component: H5Element,
     },
     rules: {
-      break: { empty: 'reset' },
+      break: { empty: 'default', default: 'default' },
     },
     shortcuts: { toggle: { keys: 'mod+alt+5' } },
   }),
@@ -76,7 +76,7 @@ export const BasicBlocksKit = [
       component: H6Element,
     },
     rules: {
-      break: { empty: 'reset' },
+      break: { empty: 'default', default: 'default' },
     },
     shortcuts: { toggle: { keys: 'mod+alt+6' } },
   }),
