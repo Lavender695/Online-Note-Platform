@@ -71,6 +71,11 @@ export function useAI() {
    * 调用 AI API
    */
   const callAI = useCallback(async (request: AIRequest): Promise<string | null> => {
+    // 取消之前的请求（如果存在）
+    if (abortController) {
+      abortController.abort();
+    }
+
     // 清除之前的错误
     setError(null);
     setIsLoading(true);
@@ -129,7 +134,7 @@ export function useAI() {
       setIsLoading(false);
       setAbortController(null);
     }
-  }, []);
+  }, [abortController]);
 
   /**
    * 取消当前请求

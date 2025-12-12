@@ -123,6 +123,8 @@ export async function POST(req: NextRequest) {
     }
 
     // 构建火山引擎 API 请求
+    // 注意：火山引擎 ARK 平台使用接入点 ID 作为 model 参数
+    // 接入点 ID 格式通常为 "ep-20240xxxxx-xxxxx"
     const volcanoRequest: VolcanoEngineRequest = {
       model: modelEndpoint,
       messages,
