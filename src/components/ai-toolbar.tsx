@@ -83,9 +83,8 @@ export function AIToolbar({
       toast.success('AI 续写完成', {
         description: '内容已生成',
       });
-    } catch (err) {
-      // Error already handled by useAI hook
-      console.error('AI completion error:', err);
+    } catch {
+      // Error already handled by useAI hook via toast
     }
   };
 
@@ -110,9 +109,8 @@ export function AIToolbar({
       toast.success('摘要生成完成', {
         description: '摘要已生成',
       });
-    } catch (err) {
-      // Error already handled by useAI hook
-      console.error('AI summary error:', err);
+    } catch {
+      // Error already handled by useAI hook via toast
     }
   };
 
