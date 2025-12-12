@@ -50,10 +50,10 @@ export async function POST(req: NextRequest) {
     const { mode, content, context, query } = body;
 
     // 验证必需的环境变量
-    const apiKey = process.env.VOLC_API_KEY;
-    const modelEndpoint = process.env.VOLC_MODEL_ENDPOINT;
+    const apiKey = process.env.VOLC_API_KEY?.trim();
+    const modelEndpoint = process.env.VOLC_MODEL_ENDPOINT?.trim();
 
-    if (!apiKey || !modelEndpoint) {
+    if (!apiKey || apiKey === '' || !modelEndpoint || modelEndpoint === '') {
       return NextResponse.json(
         { 
           error: '缺少火山引擎 API 配置。请在环境变量中设置 VOLC_API_KEY 和 VOLC_MODEL_ENDPOINT。' 
@@ -156,11 +156,17 @@ export async function POST(req: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('火山引擎 API 错误:', errorText);
+      // 仅在开发环境记录完整错误信息
+      if (process.env.NODE_ENV === 'development') {
+        console.error('火山引擎 API 错误:', errorText);
+      } else {
+        console.error('火山引擎 API 错误: HTTP', response.status);
+      }
       return NextResponse.json(
         { 
           error: '火山引擎 API 调用失败',
-          details: errorText 
+          // 仅在开发环境返回详细错误信息
+          ...(process.env.NODE_ENV === 'development' && { details: errorText })
         },
         { status: response.status }
       );

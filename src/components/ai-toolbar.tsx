@@ -162,7 +162,11 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
 
       {/* 错误信息 */}
       {error && !isLoading && (
-        <div className="text-sm text-destructive">
+        <div 
+          className="text-sm text-destructive" 
+          role="alert" 
+          aria-live="polite"
+        >
           错误: {error}
         </div>
       )}
