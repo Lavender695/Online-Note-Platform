@@ -2,16 +2,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
+import { useTheme, type Theme } from '@/hooks/use-theme';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 
 export default function SettingsPage() {
   const { user, loading, updateProfile, signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [email, setEmail] = useState(user?.email || '');
   const [name, setName] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -239,6 +242,35 @@ export default function SettingsPage() {
               <div className="space-y-2">
                 <h3 className="text-lg font-medium">头像设置</h3>
                 <p className="text-sm text-muted-foreground">点击头像即可更换</p>
+              </div>
+              
+              <Separator />
+              
+              {/* 主题设置 */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <h3 className="text-lg font-medium">主题设置</h3>
+                  <p className="text-sm text-muted-foreground">选择您喜欢的主题风格</p>
+                </div>
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="w-full border rounded-md px-3 py-2 text-left">
+                    {theme === 'light' && '浅色主题'}
+                    {theme === 'dark' && '深色主题'}
+                    {theme === 'blue' && '蓝色主题'}
+                    {theme === 'green' && '绿色主题'}
+                    {theme === 'purple' && '紫色主题'}
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-full">
+                    <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as Theme)}>
+                      <DropdownMenuRadioItem value="light">浅色主题</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="dark">深色主题</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="blue">蓝色主题</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="green">绿色主题</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="purple">紫色主题</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </CardContent>
             <CardFooter>
