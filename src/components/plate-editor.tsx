@@ -13,13 +13,8 @@ import { Note } from '@/types/note';
 import { useNotes } from '@/hooks/use-notes';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
-import { Save, Cloud, Trash2, Eraser, Database } from 'lucide-react';
+import { Save, Cloud, Trash2, Eraser } from 'lucide-react';
 import type { MyValue, RichText } from '@/components/plate-types';
-
-import * as Y from 'yjs';
-import { IndexeddbPersistence } from 'y-indexeddb';
-// 移除了不存在的 createYjsValue 导入，使用 Yjs Map 直接存储内容
-
 
 type Props = {
   note?: Note;
@@ -33,14 +28,6 @@ export function PlateEditor({ note }: Props) {
   const [userActivityTime, setUserActivityTime] = React.useState(Date.now());
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [showClearDialog, setShowClearDialog] = React.useState(false);
-  const [isOffline, setIsOffline] = React.useState(!navigator.onLine);
-  const [isYjsReady, setIsYjsReady] = React.useState(false);
-  const [tags, setTags] = React.useState<string[]>(note?.tags || []);
-  const [tagInput, setTagInput] = React.useState('');
-  
-  // Yjs相关状态
-  const yDocRef = React.useRef<Y.Doc | null>(null);
-  const yPersistenceRef = React.useRef<IndexeddbPersistence | null>(null);
   
   // 检查用户状态和笔记列表
   React.useEffect(() => {
@@ -134,46 +121,6 @@ export function PlateEditor({ note }: Props) {
     plugins: EditorKit,
     value: getEditorValue(),
   });
-  
-  // Sync editor content with Yjs document when Yjs is ready
-  React.useEffect(() => {
-    if (!editor || !isYjsReady || !yDocRef.current) return;
-    
-    const yDoc = yDocRef.current;
-    const contentMap = yDoc.getMap('content');
-    
-    // If Yjs document is empty, initialize it with current editor content
-    const yjsContent = contentMap.get('value');
-    if (!yjsContent || (Array.isArray(yjsContent) && yjsContent.length === 0)) {
-      contentMap.set('value', editor.children);
-      console.log('Initialized Yjs document with current editor content');
-    } else {
-      // Otherwise, load content from Yjs document
-      if (Array.isArray(yjsContent) && yjsContent.length > 0) {
-        editor.children = normalizeNodeId(yjsContent as any[]);
-        console.log('Loaded content from Yjs document:', yjsContent);
-      }
-    }
-  }, [editor, isYjsReady]);
-  
-  // Sync editor changes to Yjs document
-  React.useEffect(() => {
-    if (!editor || !yDocRef.current || !isYjsReady) return;
-    
-    const syncToYjs = () => {
-      const value = editor.children;
-      const yDoc = yDocRef.current;
-      const contentMap = yDoc?.getMap('content');
-      if (contentMap) {
-        contentMap.set('value', value);
-        console.log('Synced editor changes to Yjs document');
-      }
-    };
-    
-    // Sync on every change with a small delay
-    const debounceTimer = setTimeout(syncToYjs, 300);
-    return () => clearTimeout(debounceTimer);
-  }, [editor?.children, isYjsReady]);
 
   // 检查用户认证状态
   React.useEffect(() => {
@@ -510,6 +457,40 @@ export function PlateEditor({ note }: Props) {
         {lastSaved && (
           <div className="absolute top-14 right-4 z-10 text-xs text-muted-foreground whitespace-nowrap">
             自动保存于: {lastSaved.toLocaleTimeString()}
+          </div>
+        )}
+        
+        {/* AI 工具栏 */}
+        <div className="absolute top-14 left-4 z-10">
+          <Button
+            onClick={() => setShowAIToolbar(!showAIToolbar)}
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            aria-label="AI 助手"
+          >
+            <Sparkles className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        {/* AI 工具栏面板 */}
+        {showAIToolbar && (
+          <div className="fixed top-24 left-4 z-100 bg-white border rounded-lg shadow-lg p-4 w-80">
+            {/* 关闭按钮 */}
+            <div className="flex justify-end mb-2">
+              <Button
+                onClick={() => setShowAIToolbar(false)}
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <AIToolbar
+              content={getCurrentTextContent()}
+              onResult={handleAIResult}
+            />
           </div>
         )}
         

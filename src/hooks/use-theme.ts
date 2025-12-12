@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-type Theme = 'light' | 'dark';
+export type Theme = 'light' | 'dark' | 'blue' | 'green' | 'purple';
 
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>('light');
@@ -16,14 +16,37 @@ export function useTheme() {
     const preferredTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     const initialTheme = savedTheme || preferredTheme;
     setTheme(initialTheme);
-    document.documentElement.classList.toggle('dark', initialTheme === 'dark');
+    applyTheme(initialTheme);
   }, []);
 
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
+  const applyTheme = (newTheme: Theme) => {
+    // 移除所有自定义主题类
+    document.documentElement.classList.remove('blue', 'green', 'purple');
+    
+    // 根据主题设置类
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      
+      // 对于自定义主题，添加主题类
+      if (newTheme !== 'light') {
+        document.documentElement.classList.add(newTheme);
+      }
+    }
+  };
+
+  const setThemeMode = (newTheme: Theme) => {
     setTheme(newTheme);
     localStorage.setItem('theme', newTheme);
-    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+    applyTheme(newTheme);
+  };
+
+  const toggleTheme = () => {
+    const themes: Theme[] = ['light', 'dark', 'blue', 'green', 'purple'];
+    const currentIndex = themes.indexOf(theme);
+    const nextIndex = (currentIndex + 1) % themes.length;
+    setThemeMode(themes[nextIndex]);
   };
 
   // 监听系统主题变化
@@ -37,7 +60,7 @@ export function useTheme() {
         // 如果用户没有手动设置主题，跟随系统变化
         const systemTheme = mediaQuery.matches ? 'dark' : 'light';
         setTheme(systemTheme);
-        document.documentElement.classList.toggle('dark', systemTheme === 'dark');
+        applyTheme(systemTheme);
       }
     };
 
@@ -45,5 +68,5 @@ export function useTheme() {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, [isMounted]);
 
-  return { theme, toggleTheme };
+  return { theme, setTheme: setThemeMode, toggleTheme };
 }
