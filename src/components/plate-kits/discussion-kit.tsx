@@ -1,8 +1,9 @@
 'use client';
 
 import type { TComment } from '@/components/ui/comment';
-
+import { useEffect } from 'react';
 import { createPlatePlugin } from 'platejs/react';
+import { useAuth } from '@/hooks/use-auth';
 
 import { BlockDiscussion } from '@/components/ui/block-discussion';
 
@@ -132,7 +133,7 @@ const usersData: Record<
 export const discussionPlugin = createPlatePlugin({
   key: 'discussion',
   options: {
-    currentUserId: 'alice',
+    currentUserId: 'alice', // 默认值，会被实际登录用户替换
     discussions: discussionsData,
     users: usersData,
   },
@@ -143,6 +144,36 @@ export const discussionPlugin = createPlatePlugin({
   .extendSelectors(({ getOption }) => ({
     currentUser: () => getOption('users')[getOption('currentUserId')],
     user: (id: string) => getOption('users')[id],
-  }));
+  }))
+  .extend({
+    useHooks: ({ editor }) => {
+      const { user, loading } = useAuth();
+
+      useEffect(() => {
+        if (!loading && user) {
+          // 更新当前用户ID为实际登录用户的ID
+          editor.setOption(discussionPlugin, 'currentUserId', user.id);
+          
+          // 如果用户不在用户列表中，添加他们
+          const users = editor.getOption(discussionPlugin, 'users') || {};
+          if (!users[user.id]) {
+            // 使用用户的邮箱前缀作为默认用户名
+            const defaultName = user.email ? user.email.split('@')[0] : 'User';
+            // 为新用户生成头像
+            const avatarUrl = `https://api.dicebear.com/9.x/glass/svg?seed=${user.id}`;
+            
+            editor.setOption(discussionPlugin, 'users', {
+              ...users,
+              [user.id]: {
+                id: user.id,
+                avatarUrl,
+                name: defaultName,
+              },
+            });
+          }
+        }
+      }, [user, loading, editor]);
+    },
+  });
 
 export const DiscussionKit = [discussionPlugin];

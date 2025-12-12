@@ -40,7 +40,6 @@ import { ToggleKit } from '@/components/plate-kits/toggle-kit';
 
 export const EditorKit = [
   ...CopilotKit,
-  ...AIKit,
 
   // Elements
   ...BasicBlocksKit,

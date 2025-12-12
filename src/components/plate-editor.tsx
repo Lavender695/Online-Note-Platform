@@ -95,7 +95,7 @@ export function PlateEditor({ note }: Props) {
   });
 
   // 将AI生成的结果插入到编辑器中
-  const handleAIResult = React.useCallback((result: string, mode: 'summary' | 'completion') => {
+  const handleAIResult = React.useCallback((result: string, mode: 'summary' | 'completion' | 'search') => {
     if (!editor) return;
 
     if (mode === 'completion') {
@@ -112,6 +112,18 @@ export function PlateEditor({ note }: Props) {
       // 插入摘要标题
       editor.tf.insertNodes({ type: 'h2', children: [{ text: 'AI 生成摘要' }] });
       // 插入摘要内容
+      editor.tf.insertNodes({ type: 'p', children: [{ text: result }] });
+      // 聚焦编辑器
+      editor.tf.focus();
+    } else if (mode === 'search') {
+      // 智能问答 - 追加到文档末尾
+      // 先移动到文档末尾
+      editor.tf.collapse({ edge: 'end' });
+      // 插入空行
+      editor.tf.insertNodes({ type: 'p', children: [{ text: '' }] });
+      // 插入问答标题
+      editor.tf.insertNodes({ type: 'h2', children: [{ text: 'AI 问答结果' }] });
+      // 插入问答内容
       editor.tf.insertNodes({ type: 'p', children: [{ text: result }] });
       // 聚焦编辑器
       editor.tf.focus();

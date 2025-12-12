@@ -31,13 +31,6 @@ export function FloatingToolbarButtons() {
       {!readOnly && (
         <>
           <ToolbarGroup>
-            <AIToolbarButton tooltip="AI commands">
-              <WandSparklesIcon />
-              Ask AI
-            </AIToolbarButton>
-          </ToolbarGroup>
-
-          <ToolbarGroup>
             <TurnIntoToolbarButton />
 
             <MarkToolbarButton nodeType={KEYS.bold} tooltip="Bold (⌘+B)">
