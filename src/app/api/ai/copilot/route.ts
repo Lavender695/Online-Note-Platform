@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server';
 export async function POST(req: NextRequest) {
   const {
     apiKey: key,
-    model = 'gpt-4o-mini',
+    model = 'Doubao-Seed-Code',
     prompt,
     system,
   } = await req.json();
