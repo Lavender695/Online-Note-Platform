@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 
 /**
  * AI 模式类型
@@ -65,15 +65,15 @@ export interface AIResponse {
 export function useAI() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [abortController, setAbortController] = useState<AbortController | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   /**
    * 调用 AI API
    */
   const callAI = useCallback(async (request: AIRequest): Promise<string | null> => {
     // 取消之前的请求（如果存在）
-    if (abortController) {
-      abortController.abort();
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
 
     // 清除之前的错误
@@ -82,7 +82,7 @@ export function useAI() {
 
     // 创建新的 AbortController 用于取消请求
     const controller = new AbortController();
-    setAbortController(controller);
+    abortControllerRef.current = controller;
 
     try {
       // 验证请求参数
@@ -132,19 +132,19 @@ export function useAI() {
 
     } finally {
       setIsLoading(false);
-      setAbortController(null);
+      abortControllerRef.current = null;
     }
-  }, [abortController]);
+  }, []);
 
   /**
    * 取消当前请求
    */
   const cancel = useCallback(() => {
-    if (abortController) {
-      abortController.abort();
-      setAbortController(null);
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
-  }, [abortController]);
+  }, []);
 
   /**
    * 生成摘要的便捷方法

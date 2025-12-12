@@ -51,12 +51,6 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
   const { generateSummary, complete, isLoading, error, cancel } = useAI();
   const [result, setResult] = React.useState<string | null>(null);
   const [currentMode, setCurrentMode] = React.useState<'summary' | 'completion' | null>(null);
-  const [localError, setLocalError] = React.useState<string | null>(null);
-
-  // 同步 hook 的 error 到本地状态
-  React.useEffect(() => {
-    setLocalError(error);
-  }, [error]);
 
   // 处理 AI 续写
   const handleCompletion = React.useCallback(async () => {
@@ -67,7 +61,6 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
 
     setCurrentMode('completion');
     setResult(null);
-    setLocalError(null);
 
     const aiResult = await complete(content);
     
@@ -76,7 +69,6 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
       onResult?.(aiResult, 'completion');
       toast.success('AI 续写完成');
     }
-    // 错误处理通过 localError 状态在 UI 中显示
   }, [content, complete, onResult]);
 
   // 处理生成摘要
@@ -88,7 +80,6 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
 
     setCurrentMode('summary');
     setResult(null);
-    setLocalError(null);
 
     const aiResult = await generateSummary(content);
     
@@ -97,7 +88,6 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
       onResult?.(aiResult, 'summary');
       toast.success('摘要生成完成');
     }
-    // 错误处理通过 localError 状态在 UI 中显示
   }, [content, generateSummary, onResult]);
 
   // 清除结果
@@ -171,9 +161,9 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
       )}
 
       {/* 错误信息 */}
-      {localError && !isLoading && (
+      {error && !isLoading && (
         <div className="text-sm text-destructive">
-          错误: {localError}
+          错误: {error}
         </div>
       )}
 

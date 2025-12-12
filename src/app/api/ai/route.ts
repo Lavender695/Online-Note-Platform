@@ -31,7 +31,18 @@ interface VolcanoEngineResponse {
 
 /**
  * 火山引擎 AI API 路由
- * 支持三种模式：summary（摘要）、completion（续写）、search（搜索/问答）
+ * 
+ * 支持三种模式：
+ * - summary（摘要）：生成内容摘要
+ * - completion（续写）：智能续写文本
+ * - search（搜索/问答）：基于上下文的问答
+ * 
+ * 环境变量配置：
+ * - VOLC_API_KEY: 火山引擎 API 密钥
+ * - VOLC_MODEL_ENDPOINT: 火山引擎推理接入点 ID（格式如 "ep-20240xxxxx-xxxxx"）
+ * - VOLC_API_URL: (可选) 火山引擎 API 地址，默认为 "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
+ * 
+ * 注意：火山引擎 ARK 平台使用接入点 ID 作为 model 参数
  */
 export async function POST(req: NextRequest) {
   try {
@@ -123,8 +134,6 @@ export async function POST(req: NextRequest) {
     }
 
     // 构建火山引擎 API 请求
-    // 注意：火山引擎 ARK 平台使用接入点 ID 作为 model 参数
-    // 接入点 ID 格式通常为 "ep-20240xxxxx-xxxxx"
     const volcanoRequest: VolcanoEngineRequest = {
       model: modelEndpoint,
       messages,
@@ -133,7 +142,7 @@ export async function POST(req: NextRequest) {
     };
 
     // 调用火山引擎 API
-    const apiUrl = `https://ark.cn-beijing.volces.com/api/v3/chat/completions`;
+    const apiUrl = process.env.VOLC_API_URL || 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
     
     const response = await fetch(apiUrl, {
       method: 'POST',

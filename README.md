@@ -116,11 +116,15 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 # 火山引擎 AI 配置
 VOLC_API_KEY=your-volcano-engine-api-key
 VOLC_MODEL_ENDPOINT=your-volcano-engine-model-endpoint
+
+# 可选：自定义 API 地址（默认为中国北京区域）
+# VOLC_API_URL=https://ark.cn-beijing.volces.com/api/v3/chat/completions
 ```
 
 **火山引擎 API 配置说明：**
 - `VOLC_API_KEY`: 你的火山引擎 API 密钥
 - `VOLC_MODEL_ENDPOINT`: 你的火山引擎推理接入点 ID（例如: ep-2024...）
+- `VOLC_API_URL` (可选): 自定义 API 地址，默认为中国北京区域
 - 获取方式: 登录[火山引擎控制台](https://console.volcengine.com/)，在"机器学习平台"中创建推理接入点
 
 2. 配置 Supabase 数据库：
