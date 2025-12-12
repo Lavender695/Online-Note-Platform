@@ -27,7 +27,7 @@
 ## 技术栈
 
 ### 前端
-- **框架**: Next.js 16
+- **框架**: Next.js 14+
 - **UI库**: React 18
 - **编辑器**: Plate.js (富文本编辑器)
 - **UI组件**: @shadcn/ui, Radix UI
@@ -40,7 +40,6 @@
 - **数据库**: Supabase
 - **认证**: Supabase Auth
 - **文件上传**: UploadThing
-- **服务器**: Express.js (可选)
 
 ### AI集成
 - **AI 引擎**: 火山引擎 (Volcano Engine/Doubao)
@@ -63,21 +62,20 @@ online-note-platform/
 │   │   │   ├── search/       # 笔记搜索
 │   │   │   └── settings/     # 设置页面
 │   │   ├── api/              # API路由
+│   │   │   ├── notes/        # 笔记相关API
+│   │   │   ├── ai/           # AI功能API
+│   │   │   └── uploadthing/  # 文件上传API
 │   │   ├── auth/             # 认证页面
 │   │   └── layout.tsx        # 应用布局
 │   ├── components/           # React组件
 │   │   ├── ui/               # UI组件
-│   │   ├── editor-kit.tsx    # 编辑器工具集
+│   │   ├── plate-kits/       # 编辑器功能套件
+│   │   ├── ai-toolbar.tsx    # AI工具栏组件
 │   │   └── plate-editor.tsx  # 主编辑器组件
 │   ├── hooks/                # 自定义Hooks
-│   │   ├── use-notes.ts      # 笔记管理
-│   │   └── use-auth.ts       # 认证管理
 │   ├── lib/                  # 工具库
-│   │   ├── supabase.ts       # Supabase客户端
-│   │   └── utils.ts          # 通用工具
 │   └── types/                # TypeScript类型定义
 ├── public/                   # 静态资源
-├── server/                   # 可选的Express服务器
 └── package.json              # 项目配置
 ```
 

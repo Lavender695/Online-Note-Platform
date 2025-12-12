@@ -18,7 +18,7 @@ export interface AIToolbarProps {
    * @param result - AI 生成的结果
    * @param mode - 使用的 AI 模式
    */
-  onResult?: (result: string, mode: 'summary' | 'completion') => void;
+  onResult?: (result: string, mode: 'summary' | 'completion' | 'search') => void;
   
   /**
    * 工具栏的位置样式
@@ -29,7 +29,7 @@ export interface AIToolbarProps {
 /**
  * AI 工具栏组件
  * 
- * 提供 AI 辅助功能的工具栏，包括智能续写和生成摘要功能
+ * 提供 AI 辅助功能的工具栏，包括智能续写、生成摘要和智能问答功能
  * 
  * @example
  * ```tsx
@@ -42,15 +42,20 @@ export interface AIToolbarProps {
  *     } else if (mode === 'summary') {
  *       // 显示摘要
  *       showSummary(result);
+ *     } else if (mode === 'search') {
+ *       // 显示问答结果
+ *       showAnswer(result);
  *     }
  *   }}
  * />
  * ```
  */
 export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps) {
-  const { generateSummary, complete, isLoading, error, cancel } = useAI();
+  const { generateSummary, complete, search, isLoading, error, cancel } = useAI();
   const [result, setResult] = React.useState<string | null>(null);
-  const [currentMode, setCurrentMode] = React.useState<'summary' | 'completion' | null>(null);
+  const [currentMode, setCurrentMode] = React.useState<'summary' | 'completion' | 'search' | null>(null);
+  const [question, setQuestion] = React.useState<string>('');
+  const [isQuestionInputVisible, setIsQuestionInputVisible] = React.useState<boolean>(false);
 
   // 处理 AI 续写
   const handleCompletion = React.useCallback(async () => {
@@ -79,6 +84,7 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
 
     setCurrentMode('summary');
     setResult(null);
+    setIsQuestionInputVisible(false);
 
     const aiResult = await generateSummary(content);
     
@@ -88,10 +94,30 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
     }
   }, [content, generateSummary]);
 
-  // 清除结果
+  // 处理智能问答
+  const handleSearch = React.useCallback(async () => {
+    if (!question || question.trim() === '') {
+      toast.error('请输入您的问题');
+      return;
+    }
+
+    setCurrentMode('search');
+    setResult(null);
+
+    const aiResult = await search(question, content);
+    
+    if (aiResult) {
+      setResult(aiResult);
+      toast.success('智能问答完成');
+    }
+  }, [question, content, search]);
+
+  //{/* 清除结果 */}
   const handleClearResult = React.useCallback(() => {
     setResult(null);
     setCurrentMode(null);
+    setQuestion('');
+    setIsQuestionInputVisible(false);
   }, []);
 
   // 取消当前请求
@@ -104,7 +130,7 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
   return (
     <div className={`flex flex-col gap-4 ${className}`}>
       {/* 工具栏按钮 */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <Button
           onClick={handleCompletion}
           disabled={isLoading || !content}
@@ -135,6 +161,21 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
           生成摘要
         </Button>
 
+        <Button
+          onClick={() => setIsQuestionInputVisible(!isQuestionInputVisible)}
+          disabled={isLoading || !content}
+          variant="outline"
+          size="sm"
+          className="flex items-center gap-2"
+        >
+          {isLoading && currentMode === 'search' ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Sparkles className="h-4 w-4" />
+          )}
+          智能问答
+        </Button>
+
         {isLoading && (
           <Button
             onClick={handleCancel}
@@ -147,6 +188,28 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
           </Button>
         )}
       </div>
+
+      {/* 智能问答输入框 */}
+      {isQuestionInputVisible && !isLoading && (
+        <div className="flex items-center gap-2 w-full">
+          <input
+            type="text"
+            placeholder="请输入您的问题..."
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            className="flex-1 px-3 py-2 border border-input rounded-md bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+          />
+          <Button
+            onClick={handleSearch}
+            disabled={!question.trim()}
+            variant="default"
+            size="sm"
+          >
+            提问
+          </Button>
+        </div>
+      )}
 
       {/* 加载状态 */}
       {isLoading && (
@@ -175,12 +238,15 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <CardTitle className="text-sm font-medium">
-                {currentMode === 'completion' ? 'AI 续写结果' : '内容摘要'}
+                {currentMode === 'completion' ? 'AI 续写结果' : 
+                 currentMode === 'summary' ? '内容摘要' : '智能问答结果'}
               </CardTitle>
               <CardDescription className="text-xs">
                 {currentMode === 'completion' 
                   ? '以下是 AI 生成的续写内容' 
-                  : '以下是 AI 生成的内容摘要'}
+                  : currentMode === 'summary' 
+                    ? '以下是 AI 生成的内容摘要' 
+                    : '以下是 AI 生成的回答'}
               </CardDescription>
             </div>
             <Button
@@ -204,6 +270,23 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
                     if (onResult) {
                       onResult(result, 'completion');
                       toast.success('续写内容已插入到笔记');
+                    }
+                  }}
+                  variant="default"
+                  size="sm"
+                >
+                  插入到笔记
+                </Button>
+              </div>
+            )}
+            {/* 插入到笔记按钮 - 在问答和摘要模式下也显示 */}
+            {(currentMode === 'summary' || currentMode === 'search') && (
+              <div className="flex justify-end">
+                <Button
+                  onClick={() => {
+                    if (onResult) {
+                      onResult(result, currentMode);
+                      toast.success('结果已插入到笔记');
                     }
                   }}
                   variant="default"
