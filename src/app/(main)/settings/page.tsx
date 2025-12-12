@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -13,11 +13,25 @@ import { supabase } from '@/lib/supabase';
 export default function SettingsPage() {
   const { user, loading, updateProfile, signOut } = useAuth();
   const [email, setEmail] = useState(user?.email || '');
+  const [name, setName] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [avatar, setAvatar] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState(user?.user_metadata?.avatar_url || '');
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // 获取用户昵称
+  useEffect(() => {
+    const fetchUserName = async () => {
+      if (user) {
+        const { data } = await supabase.from('users').select('name').eq('id', user.id).single();
+        if (data?.name) {
+          setName(data.name);
+        }
+      }
+    };
+    fetchUserName();
+  }, [user]);
 
   if (loading) {
     return (
@@ -83,6 +97,7 @@ export default function SettingsPage() {
 
       // 更新用户信息
       await updateProfile({
+        name: name,
         email: email !== user.email ? email : undefined,
         password: newPassword || undefined,
         avatar_url: avatarUrl
@@ -159,6 +174,18 @@ export default function SettingsPage() {
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-6">
+              {/* 昵称设置 */}
+              <div className="space-y-2">
+                <label htmlFor="name" className="block text-sm font-medium">昵称</label>
+                <Input
+                  id="name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="输入您的昵称"
+                />
+              </div>
+
               {/* 邮箱设置 */}
               <div className="space-y-2">
                 <label htmlFor="email" className="block text-sm font-medium">邮箱</label>
