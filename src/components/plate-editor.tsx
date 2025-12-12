@@ -13,8 +13,9 @@ import { Note } from '@/types/note';
 import { useNotes } from '@/hooks/use-notes';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
-import { Save, Cloud, Trash2, Eraser } from 'lucide-react';
+import { Save, Cloud, Trash2, Eraser, Sparkles, X } from 'lucide-react';
 import type { MyValue, RichText } from '@/components/plate-types';
+import { AIToolbar } from '@/components/ai-toolbar';
 
 type Props = {
   note?: Note;
@@ -28,6 +29,7 @@ export function PlateEditor({ note }: Props) {
   const [userActivityTime, setUserActivityTime] = React.useState(Date.now());
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [showClearDialog, setShowClearDialog] = React.useState(false);
+  const [showAIToolbar, setShowAIToolbar] = React.useState(false);
   
   // 检查用户状态和笔记列表
   React.useEffect(() => {
@@ -91,6 +93,49 @@ export function PlateEditor({ note }: Props) {
     plugins: EditorKit,
     value: getEditorValue(),
   });
+
+  // 将AI生成的结果插入到编辑器中
+  const handleAIResult = React.useCallback((result: string, mode: 'summary' | 'completion') => {
+    if (!editor) return;
+
+    if (mode === 'completion') {
+      // 智能续写 - 插入到当前光标位置
+      editor.tf.insertText(result);
+      // 聚焦编辑器
+      editor.tf.focus();
+    } else if (mode === 'summary') {
+      // 生成摘要 - 追加到文档末尾
+      // 先移动到文档末尾
+      editor.tf.collapse({ edge: 'end' });
+      // 插入空行
+      editor.tf.insertNodes({ type: 'p', children: [{ text: '' }] });
+      // 插入摘要标题
+      editor.tf.insertNodes({ type: 'h2', children: [{ text: 'AI 生成摘要' }] });
+      // 插入摘要内容
+      editor.tf.insertNodes({ type: 'p', children: [{ text: result }] });
+      // 聚焦编辑器
+      editor.tf.focus();
+    }
+  }, [editor]);
+
+  // 获取当前编辑器的纯文本内容
+  const getCurrentTextContent = () => {
+    if (!editor?.children) return '';
+    
+    const content = editor.children as MyValue;
+    let text = '';
+    
+    const extractText = (node: any) => {
+      if (node.text) {
+        text += node.text;
+      } else if (node.children) {
+        node.children.forEach(extractText);
+      }
+    };
+    
+    content.forEach(extractText);
+    return text;
+  };
 
   // 检查用户认证状态
   React.useEffect(() => {
@@ -330,6 +375,40 @@ export function PlateEditor({ note }: Props) {
         {lastSaved && (
           <div className="absolute top-14 right-4 z-10 text-xs text-muted-foreground whitespace-nowrap">
             自动保存于: {lastSaved.toLocaleTimeString()}
+          </div>
+        )}
+        
+        {/* AI 工具栏 */}
+        <div className="absolute top-14 left-4 z-10">
+          <Button
+            onClick={() => setShowAIToolbar(!showAIToolbar)}
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            aria-label="AI 助手"
+          >
+            <Sparkles className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        {/* AI 工具栏面板 */}
+        {showAIToolbar && (
+          <div className="fixed top-24 left-4 z-100 bg-white border rounded-lg shadow-lg p-4 w-80">
+            {/* 关闭按钮 */}
+            <div className="flex justify-end mb-2">
+              <Button
+                onClick={() => setShowAIToolbar(false)}
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <AIToolbar
+              content={getCurrentTextContent()}
+              onResult={handleAIResult}
+            />
           </div>
         )}
         

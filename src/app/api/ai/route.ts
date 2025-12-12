@@ -100,11 +100,13 @@ export async function POST(req: NextRequest) {
         }
         messages.push({
           role: 'system',
-          content: '你是一个智能写作助手。请根据用户提供的内容，自然地续写下文。续写应该保持风格一致，内容连贯，并且有实质性的内容。'
+          content: '你是一个智能写作助手。请根据用户提供的内容，直接自然地续写下文，不要添加任何开场白、思路说明或解释性文字。续写应该保持风格一致，内容连贯，并且有实质性的内容。'
         });
         messages.push({
           role: 'user',
-          content: `请续写以下内容：\n\n${content}`
+          content: `请直接续写以下内容，不要添加任何开场白：
+
+${content}`
         });
         break;
 

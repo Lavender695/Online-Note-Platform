@@ -66,10 +66,9 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
     
     if (aiResult) {
       setResult(aiResult);
-      onResult?.(aiResult, 'completion');
       toast.success('AI 续写完成');
     }
-  }, [content, complete, onResult]);
+  }, [content, complete]);
 
   // 处理生成摘要
   const handleSummary = React.useCallback(async () => {
@@ -85,10 +84,9 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
     
     if (aiResult) {
       setResult(aiResult);
-      onResult?.(aiResult, 'summary');
       toast.success('摘要生成完成');
     }
-  }, [content, generateSummary, onResult]);
+  }, [content, generateSummary]);
 
   // 清除结果
   const handleClearResult = React.useCallback(() => {
@@ -195,9 +193,26 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
             </Button>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md bg-muted p-4 text-sm whitespace-pre-wrap">
+            <div className="rounded-md bg-muted p-4 text-sm whitespace-pre-wrap mb-4 max-h-60 overflow-y-auto user-select-none z-10">
               {result}
             </div>
+            {/* 插入到笔记按钮 - 只在续写模式下显示 */}
+            {currentMode === 'completion' && (
+              <div className="flex justify-end">
+                <Button
+                  onClick={() => {
+                    if (onResult) {
+                      onResult(result, 'completion');
+                      toast.success('续写内容已插入到笔记');
+                    }
+                  }}
+                  variant="default"
+                  size="sm"
+                >
+                  插入到笔记
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
