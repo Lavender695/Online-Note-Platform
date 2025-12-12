@@ -30,6 +30,8 @@ export function PlateEditor({ note }: Props) {
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [showClearDialog, setShowClearDialog] = React.useState(false);
   const [showAIToolbar, setShowAIToolbar] = React.useState(false);
+  // 新增：跟踪当前编辑的笔记（解决新建笔记时重复创建的问题）
+  const [currentNote, setCurrentNote] = React.useState<Note | undefined>(note);
   
   // 检查用户状态和笔记列表
   React.useEffect(() => {
@@ -188,18 +190,21 @@ export function PlateEditor({ note }: Props) {
         return;
       }
 
-      if (note) {
-        // Update existing note
-        console.log('更新现有笔记:', note.id);
-        const updatedNote = await updateNote(note.id, title, content);
+      if (currentNote || note) {
+        // 更新现有笔记（包括新建后正在编辑的笔记）
+        const targetNote = currentNote || note;
+        console.log('更新现有笔记:', targetNote.id);
+        const updatedNote = await updateNote(targetNote.id, title, content);
         console.log('笔记已更新:', updatedNote);
         if (isManualSave) toast.success('笔记已更新');
       } else {
-        // Create new note
+        // 创建新笔记（仅第一次保存时）
         console.log('创建新笔记:', user.id);
         const newNote = await createNote(title, content);
         console.log('新笔记已创建:', newNote);
         if (isManualSave) toast.success('笔记已保存');
+        // 保存新创建的笔记到状态中，后续自动保存将更新这个笔记
+        setCurrentNote(newNote);
         // Clear local storage for new note
         localStorage.removeItem('new_note');
       }
