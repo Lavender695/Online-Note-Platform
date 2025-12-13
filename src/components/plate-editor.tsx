@@ -13,8 +13,15 @@ import { Note } from '@/types/note';
 import { useNotes } from '@/hooks/use-notes';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
-import { Save, Cloud, Trash2, Eraser } from 'lucide-react';
+import { Save, Cloud, Trash2, Eraser, Sparkles, X, Database } from 'lucide-react';
 import type { MyValue, RichText } from '@/components/plate-types';
+
+// Yjs imports
+import * as Y from 'yjs';
+import { IndexeddbPersistence } from 'y-indexeddb';
+
+// AI imports
+import { AIToolbar } from '@/components/ai-toolbar';
 
 type Props = {
   note?: Note;
@@ -28,6 +35,15 @@ export function PlateEditor({ note }: Props) {
   const [userActivityTime, setUserActivityTime] = React.useState(Date.now());
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [showClearDialog, setShowClearDialog] = React.useState(false);
+  const [isYjsReady, setIsYjsReady] = React.useState(false);
+  const [isOffline, setIsOffline] = React.useState(!navigator.onLine);
+  const [tagInput, setTagInput] = React.useState('');
+  const [tags, setTags] = React.useState<string[]>([]);
+  const [showAIToolbar, setShowAIToolbar] = React.useState(false);
+
+  // References
+  const yDocRef = React.useRef<Y.Doc | null>(null);
+  const yPersistenceRef = React.useRef<IndexeddbPersistence | null>(null);
   
   // 检查用户状态和笔记列表
   React.useEffect(() => {
@@ -327,6 +343,29 @@ export function PlateEditor({ note }: Props) {
     }
     
     return '';
+  };
+
+  // 获取当前编辑器文本内容
+  const getCurrentTextContent = (): string => {
+    if (!editor) return '';
+    return getTextContent(editor.children);
+  };
+
+  // 处理AI结果
+  const handleAIResult = (result: string, mode: 'summary' | 'completion' | 'search') => {
+    if (mode === 'completion' && editor) {
+      // 在当前位置插入AI续写内容
+      const { selection } = editor;
+      if (selection) {
+        const { anchor } = selection;
+        // 使用编辑器的transform API插入文本
+        editor.tf.insertText(result, { at: anchor });
+        toast.success('AI续写内容已插入');
+      }
+    } else {
+      // 其他模式可以根据需要处理
+      toast.info('AI结果已生成');
+    }
   };
 
   // Extract title and content from editor value

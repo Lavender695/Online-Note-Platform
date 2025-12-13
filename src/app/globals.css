@@ -247,3 +247,13 @@
 html {
   overflow-x: hidden;
 }
+
+/* 隐藏水平滚动条但保持滚动功能 */
+.hide-scrollbar-x {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar-x::-webkit-scrollbar {
+  display: none;
+}
