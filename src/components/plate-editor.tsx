@@ -3,7 +3,7 @@
 import * as React from 'react';
 
 import { normalizeNodeId } from 'platejs';
-import { Plate, usePlateEditor } from 'platejs/react';
+import { Plate, usePlateEditor, useEditorSelector } from 'platejs/react';
 
 import { EditorKit } from '@/components/editor-kit';
 import { Editor, EditorContainer } from '@/components/ui/editor';
@@ -40,6 +40,8 @@ export function PlateEditor({ note }: Props) {
   const [tagInput, setTagInput] = React.useState('');
   const [tags, setTags] = React.useState<string[]>([]);
   const [showAIToolbar, setShowAIToolbar] = React.useState(false);
+  const [editorContent, setEditorContent] = React.useState<string>('');
+  const contentRef = React.useRef<string>('');
 
   // References
   const yDocRef = React.useRef<Y.Doc | null>(null);
@@ -103,8 +105,12 @@ export function PlateEditor({ note }: Props) {
       // Empty editor for new notes
       return normalizeNodeId([
         {
-          children: [{ text: '' }],
+          children: [{ text: '新笔记' }],
           type: 'h1',
+        },
+        {
+          children: [{ text: '' }],
+          type: 'p',
         },
       ]);
     }
@@ -118,12 +124,11 @@ export function PlateEditor({ note }: Props) {
       }
     } catch (e) {
       // 如果解析失败，说明是纯文本，使用简单转换
-      console.error('笔记内容解析失败，使用纯文本模式:', e);
     }
     
     return normalizeNodeId([
       {
-        children: [{ text: note.title }],
+        children: [{ text: note.title || '无标题' }],
         type: 'h1',
       },
       {
@@ -137,6 +142,17 @@ export function PlateEditor({ note }: Props) {
     plugins: EditorKit,
     value: getEditorValue(),
   });
+
+  // 设置初始内容到状态
+  React.useEffect(() => {
+    if (editor) {
+      // 设置初始内容到ref和state
+      const initialValue = editor.children;
+      const text = extractText(initialValue);
+      contentRef.current = text;
+      setEditorContent(text);
+    }
+  }, [editor]);
 
   // 检查用户认证状态
   React.useEffect(() => {
@@ -330,26 +346,87 @@ export function PlateEditor({ note }: Props) {
 
   // 辅助函数：递归提取文本内容
   const getTextContent = (element: any): string => {
-    if (!element) return '';
+    console.log('处理元素:', JSON.stringify(element));
+    
+    if (!element) {
+      console.log('元素为空，返回空字符串');
+      return '';
+    }
+    
+    // 如果是数组，递归处理每个元素
+    if (Array.isArray(element)) {
+      console.log('元素是数组，处理每个子元素');
+      const result = element.map(getTextContent).join('');
+      console.log('数组处理结果:', result);
+      return result;
+    }
     
     // 如果是文本节点
     if (typeof element === 'object' && 'text' in element) {
-      return element.text || '';
+      const text = element.text || '';
+      console.log('文本节点内容:', text);
+      return text;
     }
     
     // 如果是包含children的元素
     if (typeof element === 'object' && 'children' in element && Array.isArray(element.children)) {
-      return element.children.map(getTextContent).join('');
+      console.log('包含children的元素，递归处理子元素');
+      const result = element.children.map(getTextContent).join('');
+      console.log('包含children的元素处理结果:', result);
+      return result;
     }
     
+    console.log('未知类型的元素，返回空字符串');
     return '';
   };
 
-  // 获取当前编辑器文本内容
-  const getCurrentTextContent = (): string => {
-    if (!editor) return '';
-    return getTextContent(editor.children);
+  // 辅助函数：从编辑器节点中提取文本
+  const extractText = (nodes: any[]): string => {
+    let text = '';
+    
+    const walk = (node: any) => {
+      if (!node) return;
+      
+      if (node.text) {
+        text += node.text;
+      } else if (Array.isArray(node.children)) {
+        for (const child of node.children) {
+          walk(child);
+        }
+      }
+    };
+    
+    for (const node of nodes) {
+      walk(node);
+    }
+    
+    return text;
   };
+  
+  // 获取当前编辑器文本内容的回调函数
+  const getCurrentTextContent = React.useCallback((): string => {
+    // 直接从编辑器获取内容
+    if (editor && editor.children) {
+      let text = '';
+      
+      // 递归遍历所有节点
+      const walk = (nodes: any[]) => {
+        for (const node of nodes) {
+          if (node.text) {
+            text += node.text;
+          } else if (node.children) {
+            walk(node.children);
+          }
+        }
+      };
+      
+      walk(editor.children);
+      return text;
+    }
+    
+    // 如果编辑器不可用，返回空字符串
+    return '';
+  }, [editor]);
 
   // 处理AI结果
   const handleAIResult = (result: string, mode: 'summary' | 'completion' | 'search') => {
@@ -459,7 +536,7 @@ export function PlateEditor({ note }: Props) {
   };
 
   return (
-    <Plate editor={editor}>
+    <Plate editor={editor} onChange={handleUserActivity}>
       {/* 标签输入区域 */}
       <div className="border-b border-border px-8 py-3 sticky top-10 z-20 w-[80vw]">
         <div className="flex flex-wrap items-center gap-2">
@@ -514,7 +591,7 @@ export function PlateEditor({ note }: Props) {
         
         {/* AI 工具栏面板 */}
         {showAIToolbar && (
-          <div className="fixed top-24 left-4 z-100 bg-white border rounded-lg shadow-lg p-4 w-80">
+          <div className="fixed top-24 left-4 z-100 bg-muted border rounded-lg shadow-lg p-4 w-80">
             {/* 关闭按钮 */}
             <div className="flex justify-end mb-2">
               <Button
@@ -527,7 +604,7 @@ export function PlateEditor({ note }: Props) {
               </Button>
             </div>
             <AIToolbar
-              content={getCurrentTextContent()}
+              getContent={getCurrentTextContent}
               onResult={handleAIResult}
             />
           </div>

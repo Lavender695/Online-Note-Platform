@@ -9,9 +9,9 @@ import { toast } from 'sonner';
 
 export interface AIToolbarProps {
   /**
-   * 当前编辑器中的内容
+   * 获取当前编辑器中的内容的函数
    */
-  content: string;
+  getContent: () => string;
   
   /**
    * 当 AI 生成结果时的回调
@@ -34,7 +34,7 @@ export interface AIToolbarProps {
  * @example
  * ```tsx
  * <AIToolbar
- *   content={editorContent}
+ *   getContent={() => editorContent}
  *   onResult={(result, mode) => {
  *     if (mode === 'completion') {
  *       // 将续写内容插入到编辑器
@@ -50,15 +50,19 @@ export interface AIToolbarProps {
  * />
  * ```
  */
-export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps) {
+export function AIToolbar({ getContent, onResult, className = '' }: AIToolbarProps) {
   const { generateSummary, complete, search, isLoading, error, cancel } = useAI();
   const [result, setResult] = React.useState<string | null>(null);
   const [currentMode, setCurrentMode] = React.useState<'summary' | 'completion' | 'search' | null>(null);
   const [question, setQuestion] = React.useState<string>('');
   const [isQuestionInputVisible, setIsQuestionInputVisible] = React.useState<boolean>(false);
+  
+
 
   // 处理 AI 续写
   const handleCompletion = React.useCallback(async () => {
+    const content = getContent();
+    // console.log('AI续写调用时获取的内容:', content);
     if (!content || content.trim() === '') {
       toast.error('请先输入一些内容');
       return;
@@ -73,10 +77,12 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
       setResult(aiResult);
       toast.success('AI 续写完成');
     }
-  }, [content, complete]);
+  }, [getContent, complete]);
 
   // 处理生成摘要
   const handleSummary = React.useCallback(async () => {
+    const content = getContent();
+    console.log('生成摘要调用时获取的内容:', content);
     if (!content || content.trim() === '') {
       toast.error('请先输入一些内容');
       return;
@@ -92,10 +98,11 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
       setResult(aiResult);
       toast.success('摘要生成完成');
     }
-  }, [content, generateSummary]);
+  }, [getContent, generateSummary]);
 
   // 处理智能问答
   const handleSearch = React.useCallback(async () => {
+    const content = getContent();
     if (!question || question.trim() === '') {
       toast.error('请输入您的问题');
       return;
@@ -110,7 +117,7 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
       setResult(aiResult);
       toast.success('智能问答完成');
     }
-  }, [question, content, search]);
+  }, [question, getContent, search]);
 
   //{/* 清除结果 */}
   const handleClearResult = React.useCallback(() => {
@@ -130,51 +137,51 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
   return (
     <div className={`flex flex-col gap-4 ${className}`}>
       {/* 工具栏按钮 */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <Button
-          onClick={handleCompletion}
-          disabled={isLoading || !content}
-          variant="outline"
-          size="sm"
-          className="flex items-center gap-2"
-        >
-          {isLoading && currentMode === 'completion' ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Sparkles className="h-4 w-4" />
-          )}
-          AI 续写
-        </Button>
+      <div className="flex items-center gap-2 flex-wrap justify-center">
+            <Button
+              onClick={handleCompletion}
+              disabled={isLoading || !getContent()}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              {isLoading && currentMode === 'completion' ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              AI 续写
+            </Button>
 
-        <Button
-          onClick={handleSummary}
-          disabled={isLoading || !content}
-          variant="outline"
-          size="sm"
-          className="flex items-center gap-2"
-        >
-          {isLoading && currentMode === 'summary' ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <FileText className="h-4 w-4" />
-          )}
-          生成摘要
-        </Button>
+          <Button
+            onClick={handleSummary}
+            disabled={isLoading || !getContent()}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            {isLoading && currentMode === 'summary' ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileText className="h-4 w-4" />
+            )}
+            生成摘要
+          </Button>
 
-        <Button
-          onClick={() => setIsQuestionInputVisible(!isQuestionInputVisible)}
-          disabled={isLoading || !content}
-          variant="outline"
-          size="sm"
-          className="flex items-center gap-2"
-        >
-          {isLoading && currentMode === 'search' ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Sparkles className="h-4 w-4" />
-          )}
-          智能问答
-        </Button>
+          <Button
+            onClick={() => setIsQuestionInputVisible(!isQuestionInputVisible)}
+            disabled={isLoading || !getContent()}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            {isLoading && currentMode === 'search' ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            智能问答
+          </Button>
 
         {isLoading && (
           <Button
@@ -188,6 +195,8 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
           </Button>
         )}
       </div>
+
+
 
       {/* 智能问答输入框 */}
       {isQuestionInputVisible && !isLoading && (
@@ -224,7 +233,7 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
       {/* 错误信息 */}
       {error && !isLoading && (
         <div 
-          className="text-sm text-destructive" 
+          className=" text-muted-foreground text-destructive" 
           role="alert" 
           aria-live="polite"
         >
@@ -237,11 +246,11 @@ export function AIToolbar({ content, onResult, className = '' }: AIToolbarProps)
         <Card className="w-full">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <CardTitle className="text-sm font-medium">
+              <CardTitle className=" text-muted-foreground font-medium">
                 {currentMode === 'completion' ? 'AI 续写结果' : 
                  currentMode === 'summary' ? '内容摘要' : '智能问答结果'}
               </CardTitle>
-              <CardDescription className="text-xs">
+              <CardDescription className=" text-muted-foreground">
                 {currentMode === 'completion' 
                   ? '以下是 AI 生成的续写内容' 
                   : currentMode === 'summary' 
