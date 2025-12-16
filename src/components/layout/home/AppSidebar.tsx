@@ -22,8 +22,8 @@ export function AppSidebar() {
       // 创建空笔记
       const newNote = await createNote('未命名笔记', JSON.stringify([]));
       if (newNote?.id) {
-        // 导航到编辑页面并加载新笔记
-        router.push(`/editor?id=${newNote.id}`);
+        // 使用页面刷新代替客户端导航，确保获取最新的笔记数据
+        window.location.href = `/editor?id=${newNote.id}`;
       }
     } catch (error) {
       console.error('创建笔记失败:', error);
