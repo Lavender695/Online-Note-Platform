@@ -144,6 +144,7 @@ export function useNotes() {
           id: note.id,
           title: note.title,
           content: note.content,
+          tags: note.tags,
           user_id: user.id,
           created_at: note.created_at,
           updated_at: note.updated_at,
@@ -155,6 +156,7 @@ export function useNotes() {
         await supabase.from('notes').update({
           title: note.title,
           content: note.content,
+          tags: note.tags,
           updated_at: note.updated_at,
         }).eq('id', note.id).eq('user_id', user.id);
       }

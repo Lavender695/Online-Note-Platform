@@ -9,7 +9,8 @@ import { PlateElement } from 'platejs/react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-import { EmojiPicker, EmojiPopover } from './emoji-toolbar-button';
+import { EmojiPicker } from './emoji-toolbar-button';
+import { Popover, PopoverContent, PopoverTrigger } from '@radix-ui/react-popover';
 
 export function CalloutElement({
   attributes,
@@ -40,9 +41,8 @@ export function CalloutElement({
       {...props}
     >
       <div className="flex w-full gap-2 rounded-md">
-        <EmojiPopover
-          {...emojiToolbarDropdownProps}
-          control={
+        <Popover {...emojiToolbarDropdownProps}>
+          <PopoverTrigger asChild>
             <Button
               variant="ghost"
               className="size-6 select-none p-1 text-[18px] hover:bg-muted-foreground/15"
@@ -54,10 +54,11 @@ export function CalloutElement({
             >
               {(props.element.icon as any) || '💡'}
             </Button>
-          }
-        >
-          <EmojiPicker {...emojiPickerState} {...calloutProps} />
-        </EmojiPopover>
+          </PopoverTrigger>
+          <PopoverContent className="z-100">
+            <EmojiPicker {...emojiPickerState} {...calloutProps} />
+          </PopoverContent>
+        </Popover>
         <div className="w-full">{children}</div>
       </div>
     </PlateElement>

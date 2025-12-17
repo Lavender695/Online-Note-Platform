@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 import { Save, Cloud, Trash2, Eraser, Sparkles, X, Database } from 'lucide-react';
 import type { MyValue, RichText } from '@/components/plate-types';
+import { useSidebar } from '@/components/ui/sidebar';
 
 // Yjs imports
 import * as Y from 'yjs';
@@ -29,7 +30,8 @@ type Props = {
 
 export function PlateEditor({ note }: Props) {
   const { user, loading: authLoading } = useAuth();
-  const { createNote, updateNote, deleteNotes, notes } = useNotes();
+  const { createNote, updateNote, deleteNotes, notes, getAllTags } = useNotes();
+  const { state } = useSidebar();
   const [saving, setSaving] = React.useState(false);
   const [lastSaved, setLastSaved] = React.useState<Date | null>(null);
   const [userActivityTime, setUserActivityTime] = React.useState(Date.now());
@@ -41,6 +43,40 @@ export function PlateEditor({ note }: Props) {
   const [tags, setTags] = React.useState<string[]>([]);
   const [showAIToolbar, setShowAIToolbar] = React.useState(false);
   const [editorContent, setEditorContent] = React.useState<string>('');
+  const [showTagDropdown, setShowTagDropdown] = React.useState(false);
+  const [allTags, setAllTags] = React.useState<string[]>([]);
+  const tagDropdownRef = React.useRef<HTMLDivElement>(null);
+  
+  // 获取所有可用标签
+  React.useEffect(() => {
+    setAllTags(getAllTags());
+  }, [getAllTags, notes]);
+
+  // 从note对象初始化标签
+  React.useEffect(() => {
+    if (note && note.tags) {
+      setTags(note.tags);
+    } else {
+      setTags([]);
+    }
+  }, [note]);
+
+  // 点击外部关闭标签下拉菜单
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tagDropdownRef.current && !tagDropdownRef.current.contains(event.target as Node)) {
+        setShowTagDropdown(false);
+      }
+    };
+
+    if (showTagDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showTagDropdown]);
   const contentRef = React.useRef<string>('');
 
   // References
@@ -185,12 +221,16 @@ export function PlateEditor({ note }: Props) {
     if (tagInput.trim() && !tags.includes(tagInput.trim())) {
       setTags([...tags, tagInput.trim()]);
       setTagInput('');
+      handleUserActivity();
+      saveNote(false); // 立即触发保存
     }
   };
 
   // 删除标签
   const removeTag = (tagToRemove: string) => {
     setTags(tags.filter(tag => tag !== tagToRemove));
+    handleUserActivity();
+    saveNote(false); // 立即触发保存
   };
 
   // 处理标签输入框的按键事件
@@ -284,13 +324,14 @@ export function PlateEditor({ note }: Props) {
   React.useEffect(() => {
     const autoSaveTimer = setTimeout(async () => {
       const inactivityTime = Date.now() - userActivityTime;
-      if (inactivityTime >= 3000 && editor?.children) {
+      // 只要有用户活动且满足时间间隔，就保存，无论是否只有标签变化
+      if (inactivityTime >= 3000 && (editor?.children || tags.length > 0)) {
         await saveNote(false); // 自动保存不显示toast
       }
     }, 3000); // 在这里修改自动保存的时间间隔
 
     return () => clearTimeout(autoSaveTimer);
-  }, [userActivityTime, editor?.children, saveNote]);
+  }, [userActivityTime, editor?.children, saveNote, tags]);
 
   // 根据sidebar状态调整按钮位置
   React.useEffect(() => {
@@ -437,7 +478,6 @@ export function PlateEditor({ note }: Props) {
         const { anchor } = selection;
         // 使用编辑器的transform API插入文本
         editor.tf.insertText(result, { at: anchor });
-        toast.success('AI续写内容已插入');
       }
     } else {
       // 其他模式可以根据需要处理
@@ -538,60 +578,204 @@ export function PlateEditor({ note }: Props) {
   return (
     <Plate editor={editor} onChange={handleUserActivity}>
       {/* 标签输入区域 */}
-      <div className="border-b border-border px-8 py-3 sticky top-10 z-20 w-[80vw]">
-        <div className="flex flex-wrap items-center gap-2">
-          {tags.map((tag) => (
-            <span
-              key={tag}
-              className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded-full text-sm"
-            >
-              {tag}
+      <div className={`border-b border-border px-8 py-3 top-0 z-50 bg-background fixed top-[40px] w-[100vw]`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* 标签输入和下拉菜单 */}
+            <div className="relative" ref={tagDropdownRef}>
               <button
-                onClick={() => removeTag(tag)}
-                className="hover:text-primary/70 focus:outline-none"
+                onClick={() => setShowTagDropdown(!showTagDropdown)}
+                className="flex items-center gap-1 px-3 py-1 border border-input rounded-full text-sm hover:bg-background/80 focus:outline-none focus:ring-2 focus:ring-primary/50"
               >
-                ✕
+                {tagInput ? tagInput : '标签'}
+                <span className={`transform transition-transform ${showTagDropdown ? 'rotate-180' : ''}`}>
+                  ▼
+                </span>
               </button>
-            </span>
-          ))}
-          <input
-            type="text"
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={handleTagInputKeyDown}
-            placeholder="添加标签..."
-            className="flex-1 max-w-xs px-2 py-1 border border-input rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
+              
+              {/* 下拉菜单 */}
+              {showTagDropdown && (
+                <div className="absolute z-50 mt-1 w-64 bg-background border border-input rounded-md shadow-lg overflow-hidden">
+                  {/* 搜索框 */}
+                  <input
+                    type="text"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={handleTagInputKeyDown}
+                    placeholder="搜索或创建标签..."
+                    className="w-full px-3 py-2 border-b border-input text-sm focus:outline-none"
+                  />
+                  
+                  {/* 已选择标签区域 */}
+                  {tags.length > 0 && (
+                    <div className="px-3 py-2 border-b border-input">
+                      <div className="text-xs text-muted-foreground mb-1">已添加标签</div>
+                      <div className="flex flex-wrap gap-1">
+                        {tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded-full text-xs"
+                          >
+                            {tag}
+                            <button
+                              onClick={() => removeTag(tag)}
+                              className="hover:text-primary/70 focus:outline-none"
+                            >
+                              ✕
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* 标签列表 */}
+                  <div className="max-h-40 overflow-y-auto">
+                    {allTags.length > 0 ? (
+                      allTags.map((availableTag) => (
+                        <button
+                          key={availableTag}
+                          onClick={() => {
+                              if (!tags.includes(availableTag)) {
+                                setTags([...tags, availableTag]);
+                                handleUserActivity();
+                                saveNote(false); // 立即触发保存
+                              }
+                              setTagInput('');
+                              setShowTagDropdown(false);
+                            }}
+                          className={`w-full px-3 py-2 text-left text-sm hover:bg-primary/10 transition-colors ${tags.includes(availableTag) ? 'text-muted-foreground' : 'text-foreground'}`}
+                          disabled={tags.includes(availableTag)}
+                        >
+                          <span className="flex items-center justify-between">
+                            <span>{availableTag}</span>
+                            {tags.includes(availableTag) && (
+                              <span className="text-primary">已添加</span>
+                            )}
+                          </span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                        暂无标签，您可以创建新标签
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* 创建新标签按钮 */}
+                  {tagInput.trim() && !allTags.includes(tagInput.trim()) && (
+                    <div className="border-t border-input p-2">
+                      <button
+                        onClick={() => {
+                          addTag();
+                          setShowTagDropdown(false);
+                        }}
+                        className="w-full px-3 py-2 bg-primary/10 text-primary text-sm rounded hover:bg-primary/20 transition-colors"
+                      >
+                        创建新标签: {tagInput.trim()}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* 清空、删除和保存按钮 */}
+          <div className="flex gap-2 fixed right-5">
+            {/* 清空文档按钮 */}
+            <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+              <DialogTrigger asChild>
+                <Button variant="secondary" size="sm" className="flex items-center gap-2">
+                  <Eraser className="h-3 w-3" />
+                  
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>确认清空</DialogTitle>
+                  <DialogDescription>
+                    您确定要清空当前文档吗？此操作无法撤销，但笔记本身不会被删除。
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button variant="ghost" onClick={() => setShowClearDialog(false)}>
+                    取消
+                  </Button>
+                  <Button variant="destructive" onClick={handleClearDocument}>
+                    确认清空
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* 删除笔记按钮 */}
+            {note && (
+              <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <DialogTrigger asChild>
+                  <Button variant="destructive" size="sm" className="flex items-center gap-2">
+                    <Trash2 className="h-3 w-3" />
+                    
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>确认删除</DialogTitle>
+                    <DialogDescription>
+                      您确定要删除这篇笔记吗？此操作无法撤销。
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <Button variant="ghost" onClick={() => setShowDeleteDialog(false)}>
+                      取消
+                    </Button>
+                    <Button variant="destructive" onClick={handleDeleteNote}>
+                      确认删除
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+
+            {/* 保存笔记按钮 */}
+            <Button 
+              onClick={() => saveNote(true)}
+              disabled={saving}
+              variant="default"
+              size="sm"
+              className="flex items-center gap-2 bg-primary hover:bg-primary/90"
+            >
+              {saving ? (
+                <>
+                  <Cloud className="h-3 w-3 animate-spin" />
+                  保存中...
+                </>
+              ) : (
+                <>
+                  <Save className="h-3 w-3" />
+                  {isOffline ? '离线保存' : '保存笔记'}
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
-      <EditorContainer className="relative w-full max-w-full m-0 mt-0">
+
+      <EditorContainer className="relative w-full max-w-full m-0 mt-14">
         <Editor 
           className="min-h-[500px] min-w-[70vw] w-full max-w-full mx-5 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-b-lg bg-background text-sm"
         />
         
         {/* 最后保存时间 - 右上角（toolbar下方） */}
         {lastSaved && (
-          <div className="absolute top-14 right-4 z-10 text-xs text-muted-foreground whitespace-nowrap">
+          <div className="fixed top-40 right-4 z-10 text-xs text-muted-foreground whitespace-nowrap">
             自动保存于: {lastSaved.toLocaleTimeString()}
           </div>
         )}
         
-        {/* AI 工具栏 */}
-        <div className="absolute top-14 left-4 z-10">
-          <Button
-            onClick={() => setShowAIToolbar(!showAIToolbar)}
-            variant="outline"
-            size="icon"
-            className="h-8 w-8"
-            aria-label="AI 助手"
-          >
-            <Sparkles className="h-4 w-4" />
-          </Button>
-        </div>
-        
         {/* AI 工具栏面板 */}
         {showAIToolbar && (
-          <div className="fixed top-24 left-4 z-100 bg-muted border rounded-lg shadow-lg p-4 w-80">
+          <div className="fixed bottom-20 right-4 z-100 bg-muted border rounded-lg shadow-lg p-4 w-80">
             {/* 关闭按钮 */}
             <div className="flex justify-end mb-2">
               <Button
@@ -612,23 +796,15 @@ export function PlateEditor({ note }: Props) {
         
         {/* 操作按钮区域 */}
         <div className="fixed bottom-8 right-8 flex items-center gap-2 z-10">
-          {/* 保存按钮 */}
-          <Button 
-            onClick={() => saveNote(true)}
-            disabled={saving}
-            className="flex items-center gap-2 bg-primary hover:bg-primary/90"
+          {/* AI 助手按钮 */}
+          <Button
+            onClick={() => setShowAIToolbar(!showAIToolbar)}
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            aria-label="AI 助手"
           >
-            {saving ? (
-              <>
-                <Cloud className="h-4 w-4 animate-spin" />
-                保存中...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4" />
-                {isOffline ? '离线保存' : '保存笔记'}
-              </>
-            )}
+            <Sparkles className="h-4 w-4" />
           </Button>
           
           {/* 离线状态指示器 */}
@@ -637,63 +813,6 @@ export function PlateEditor({ note }: Props) {
               <Database className="h-3 w-3" />
               离线
             </div>
-          )}
-        </div>
-
-        {/* 清空和删除按钮 */}
-        <div className="fixed bottom-8 left-8 flex gap-2 z-10 transition-all duration-200 button-container-bottom-left">
-          {/* 清空文档按钮 */}
-          <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
-            <DialogTrigger asChild>
-              <Button variant="secondary" className="flex items-center gap-2">
-                <Eraser className="h-4 w-4" />
-                清空文档
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>确认清空</DialogTitle>
-                <DialogDescription>
-                  您确定要清空当前文档吗？此操作无法撤销，但笔记本身不会被删除。
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button variant="ghost" onClick={() => setShowClearDialog(false)}>
-                  取消
-                </Button>
-                <Button variant="destructive" onClick={handleClearDocument}>
-                  确认清空
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          {/* 删除笔记按钮 */}
-          {note && (
-            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-              <DialogTrigger asChild>
-                <Button variant="destructive" className="flex items-center gap-2">
-                  <Trash2 className="h-4 w-4" />
-                  删除笔记
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>确认删除</DialogTitle>
-                  <DialogDescription>
-                    您确定要删除这篇笔记吗？此操作无法撤销。
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <Button variant="ghost" onClick={() => setShowDeleteDialog(false)}>
-                    取消
-                  </Button>
-                  <Button variant="destructive" onClick={handleDeleteNote}>
-                    确认删除
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
           )}
         </div>
       </EditorContainer>

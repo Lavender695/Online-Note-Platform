@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 
-import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu';
+import type { DropdownMenuSubProps } from '@radix-ui/react-dropdown-menu';
 
 import {
   CalendarIcon,
@@ -31,10 +31,13 @@ import { KEYS } from 'platejs';
 import { type PlateEditor, useEditorRef } from 'platejs/react';
 
 import {
-  DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuGroup,
 } from '@/components/ui/dropdown-menu';
 import {
   insertBlock,
@@ -141,11 +144,6 @@ const groups: Group[] = [
     group: 'Media',
     items: [
       {
-        icon: <ImageIcon />,
-        label: 'Image',
-        value: KEYS.img,
-      },
-      {
         icon: <FilmIcon />,
         label: 'Embed',
         value: KEYS.mediaEmbed,
@@ -217,24 +215,20 @@ const groups: Group[] = [
   },
 ];
 
-export function InsertToolbarButton(props: DropdownMenuProps) {
+export function InsertToolbarButton(props: DropdownMenuSubProps) {
   const editor = useEditorRef();
-  const [open, setOpen] = React.useState(false);
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen} modal={false} {...props}>
-      <DropdownMenuTrigger asChild>
-        <ToolbarButton pressed={open} tooltip="Insert" isDropdown>
-          <PlusIcon />
-        </ToolbarButton>
-      </DropdownMenuTrigger>
+    <DropdownMenuSub {...props}>
+      <DropdownMenuSubTrigger className="flex items-center gap-2">
+        <PlusIcon className="size-4" />
+        <span>Insert</span>
+      </DropdownMenuSubTrigger>
 
-      <DropdownMenuContent
-        className="flex max-h-[500px] min-w-0 flex-col overflow-y-auto"
-        align="start"
-      >
+      <DropdownMenuSubContent>
         {groups.map(({ group, items: nestedItems }) => (
-          <ToolbarMenuGroup key={group} label={group}>
+          <DropdownMenuGroup key={group}>
+            <DropdownMenuLabel>{group}</DropdownMenuLabel>
             {nestedItems.map(({ icon, label, value, onSelect }) => (
               <DropdownMenuItem
                 key={value}
@@ -248,9 +242,9 @@ export function InsertToolbarButton(props: DropdownMenuProps) {
                 {label}
               </DropdownMenuItem>
             ))}
-          </ToolbarMenuGroup>
+          </DropdownMenuGroup>
         ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   );
 }

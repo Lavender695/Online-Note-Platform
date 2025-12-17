@@ -39,7 +39,6 @@
 - **框架**: Next.js 16.0.7
 - **UI库**: React 18.3.1
 - **编辑器**: Plate.js 51.1.3 (富文本编辑器)
-- **协作编辑**: Yjs (@slate-yjs/core)
 - **UI组件**: @shadcn/ui, Radix UI, Ariakit
 - **样式**: Tailwind CSS 4
 - **工具库**: clsx, lodash, date-fns, lucide-react
@@ -165,7 +164,6 @@ UPLOADTHING_APP_ID=your-uploadthing-app-id
      - `user_id` (UUID, 外键关联用户)
      - `created_at` (时间戳)
      - `updated_at` (时间戳)
-   - 配置行级安全策略，确保用户只能访问自己的笔记
 
 ### 运行
 
@@ -202,7 +200,6 @@ pnpm start
 - **基础编辑**：标题、段落、列表、代码块等
 - **高级功能**：表格、链接、图片、音频、视频等
 - **多媒体支持**：图片、音频、视频和文件上传
-- **评论系统**：在笔记中添加和管理评论
 - **布局工具**：列布局、分割线等
 - **样式选项**：字体大小、颜色、高亮等
 - **历史记录**：撤销和重做操作

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 
-import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu';
+import type { DropdownMenuSubProps } from '@radix-ui/react-dropdown-menu';
 
 import { MarkdownPlugin } from '@platejs/markdown';
 import { ArrowDownToLineIcon } from 'lucide-react';
@@ -11,22 +11,20 @@ import { useEditorRef } from 'platejs/react';
 import { serializeHtml } from 'platejs/static';
 
 import {
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
 import { BaseEditorKit } from '@/components/plate-kits/editor-base-kit';
 
 import { EditorStatic } from './editor-static';
-import { ToolbarButton } from './toolbar';
 
 const siteUrl = 'https://platejs.org';
 
-export function ExportToolbarButton(props: DropdownMenuProps) {
+export function ExportToolbarButton() {
   const editor = useEditorRef();
-  const [open, setOpen] = React.useState(false);
 
   const getCanvas = async () => {
     const { default: html2canvas } = await import('html2canvas-pro');
@@ -148,14 +146,13 @@ export function ExportToolbarButton(props: DropdownMenuProps) {
   };
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen} modal={false} {...props}>
-      <DropdownMenuTrigger asChild>
-        <ToolbarButton pressed={open} tooltip="Export" isDropdown>
-          <ArrowDownToLineIcon className="size-4" />
-        </ToolbarButton>
-      </DropdownMenuTrigger>
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger className="flex items-center gap-2">
+        <ArrowDownToLineIcon className="size-4" />
+        <span>Export</span>
+      </DropdownMenuSubTrigger>
 
-      <DropdownMenuContent align="start">
+      <DropdownMenuSubContent>
         <DropdownMenuGroup>
           <DropdownMenuItem onSelect={exportToHtml}>
             Export as HTML
@@ -170,7 +167,7 @@ export function ExportToolbarButton(props: DropdownMenuProps) {
             Export as Markdown
           </DropdownMenuItem>
         </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   );
 }

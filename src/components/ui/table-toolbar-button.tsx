@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 
-import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu';
+import type { DropdownMenuSubProps } from '@radix-ui/react-dropdown-menu';
 
 import { TablePlugin, useTableMergeState } from '@platejs/table/react';
 import {
@@ -21,40 +21,36 @@ import { KEYS } from 'platejs';
 import { useEditorPlugin, useEditorSelector } from 'platejs/react';
 
 import {
-  DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
 import { ToolbarButton } from './toolbar';
 
-export function TableToolbarButton(props: DropdownMenuProps) {
+export function TableToolbarButton(props: DropdownMenuSubProps) {
   const tableSelected = useEditorSelector(
     (editor) => editor.api.some({ match: { type: KEYS.table } }),
     []
   );
 
   const { editor, tf } = useEditorPlugin(TablePlugin);
-  const [open, setOpen] = React.useState(false);
   const mergeState = useTableMergeState();
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen} modal={false} {...props}>
-      <DropdownMenuTrigger asChild>
-        <ToolbarButton pressed={open} tooltip="Table" isDropdown>
-          <Table />
-        </ToolbarButton>
-      </DropdownMenuTrigger>
+    <DropdownMenuSub {...props}>
+      <DropdownMenuSubTrigger className="flex items-center gap-2">
+        <Table className="size-4" />
+        <span>Table</span>
+      </DropdownMenuSubTrigger>
 
-      <DropdownMenuContent
+      <DropdownMenuSubContent
         className="flex w-[180px] min-w-0 flex-col"
-        align="start"
       >
         <DropdownMenuGroup>
           <DropdownMenuSub>
@@ -203,8 +199,8 @@ export function TableToolbarButton(props: DropdownMenuProps) {
             Delete table
           </DropdownMenuItem>
         </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   );
 }
 

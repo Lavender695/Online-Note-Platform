@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 
-import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu';
+import type { DropdownMenuSubProps } from '@radix-ui/react-dropdown-menu';
 
 import { LineHeightPlugin } from '@platejs/basic-styles/react';
 import { DropdownMenuItemIndicator } from '@radix-ui/react-dropdown-menu';
@@ -10,16 +10,17 @@ import { CheckIcon, WrapText } from 'lucide-react';
 import { useEditorRef, useSelectionFragmentProp } from 'platejs/react';
 
 import {
-  DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
 
 import { ToolbarButton } from './toolbar';
 
-export function LineHeightToolbarButton(props: DropdownMenuProps) {
+export function LineHeightToolbarButton(props: DropdownMenuSubProps) {
   const editor = useEditorRef();
   const { defaultNodeValue, validNodeValues: values = [] } =
     editor.getInjectProps(LineHeightPlugin);
@@ -29,17 +30,14 @@ export function LineHeightToolbarButton(props: DropdownMenuProps) {
     getProp: (node) => node.lineHeight,
   });
 
-  const [open, setOpen] = React.useState(false);
-
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen} modal={false} {...props}>
-      <DropdownMenuTrigger asChild>
-        <ToolbarButton pressed={open} tooltip="Line height" isDropdown>
-          <WrapText />
-        </ToolbarButton>
-      </DropdownMenuTrigger>
+    <DropdownMenuSub {...props}>
+      <DropdownMenuSubTrigger className="flex items-center gap-2">
+        <WrapText className="size-4" />
+        <span>Line Height</span>
+      </DropdownMenuSubTrigger>
 
-      <DropdownMenuContent className="min-w-0" align="start">
+      <DropdownMenuSubContent className="min-w-0">
         <DropdownMenuRadioGroup
           value={value}
           onValueChange={(newValue) => {
@@ -64,7 +62,7 @@ export function LineHeightToolbarButton(props: DropdownMenuProps) {
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   );
 }

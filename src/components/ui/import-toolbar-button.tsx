@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 
-import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu';
+import type { DropdownMenuSubProps } from '@radix-ui/react-dropdown-menu';
 
 import { MarkdownPlugin } from '@platejs/markdown';
 import { ArrowUpToLineIcon } from 'lucide-react';
@@ -11,20 +11,19 @@ import { getEditorDOMFromHtmlString } from 'platejs/static';
 import { useFilePicker } from 'use-file-picker';
 
 import {
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
 
 import { ToolbarButton } from './toolbar';
 
 type ImportType = 'html' | 'markdown';
 
-export function ImportToolbarButton(props: DropdownMenuProps) {
+export function ImportToolbarButton() {
   const editor = useEditorRef();
-  const [open, setOpen] = React.useState(false);
 
   const getFileNodes = (text: string, type: ImportType) => {
     if (type === 'html') {
@@ -68,14 +67,13 @@ export function ImportToolbarButton(props: DropdownMenuProps) {
   });
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen} modal={false} {...props}>
-      <DropdownMenuTrigger asChild>
-        <ToolbarButton pressed={open} tooltip="Import" isDropdown>
-          <ArrowUpToLineIcon className="size-4" />
-        </ToolbarButton>
-      </DropdownMenuTrigger>
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger className="flex items-center gap-2">
+        <ArrowUpToLineIcon className="size-4" />
+        <span>Import</span>
+      </DropdownMenuSubTrigger>
 
-      <DropdownMenuContent align="start">
+      <DropdownMenuSubContent>
         <DropdownMenuGroup>
           <DropdownMenuItem
             onSelect={() => {
@@ -93,7 +91,7 @@ export function ImportToolbarButton(props: DropdownMenuProps) {
             Import from Markdown
           </DropdownMenuItem>
         </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   );
 }

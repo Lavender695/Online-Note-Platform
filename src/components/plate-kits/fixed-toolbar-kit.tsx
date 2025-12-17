@@ -9,7 +9,7 @@ export const FixedToolbarKit = [
   createPlatePlugin({
     key: 'fixed-toolbar',
     render: {
-      beforeEditable: () => (
+      afterEditable: () => (
         <FixedToolbar>
           <FixedToolbarButtons />
         </FixedToolbar>
