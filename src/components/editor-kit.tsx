@@ -13,11 +13,10 @@ import { BlockPlaceholderKit } from '@/components/plate-kits/block-placeholder-k
 import { CalloutKit } from '@/components/plate-kits/callout-kit';
 import { CodeBlockKit } from '@/components/plate-kits/code-block-kit';
 import { ColumnKit } from '@/components/plate-kits/column-kit';
-import { CommentKit } from '@/components/plate-kits/comment-kit';
+
 import { CopilotKit } from '@/components/plate-kits/copilot-kit';
 import { CursorOverlayKit } from '@/components/plate-kits/cursor-overlay-kit';
 import { DateKit } from '@/components/plate-kits/date-kit';
-import { DiscussionKit } from '@/components/plate-kits/discussion-kit';
 import { DndKit } from '@/components/plate-kits/dnd-kit';
 import { DocxKit } from '@/components/plate-kits/docx-kit';
 import { EmojiKit } from '@/components/plate-kits/emoji-kit';
@@ -33,7 +32,6 @@ import { MathKit } from '@/components/plate-kits/math-kit';
 import { MediaKit } from '@/components/plate-kits/media-kit';
 import { MentionKit } from '@/components/plate-kits/mention-kit';
 import { SlashKit } from '@/components/plate-kits/slash-kit';
-import { SuggestionKit } from '@/components/plate-kits/suggestion-kit';
 import { TableKit } from '@/components/plate-kits/table-kit';
 import { TocKit } from '@/components/plate-kits/toc-kit';
 import { ToggleKit } from '@/components/plate-kits/toggle-kit';
@@ -65,9 +63,6 @@ export const EditorKit = [
   ...LineHeightKit,
 
   // Collaboration
-  ...DiscussionKit,
-  ...CommentKit,
-  ...SuggestionKit,
 
   // Editing
   ...SlashKit,

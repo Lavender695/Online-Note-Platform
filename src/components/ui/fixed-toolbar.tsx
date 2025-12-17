@@ -29,7 +29,7 @@ export function FixedToolbar({ className, ...props }: React.ComponentProps<typeo
     <Toolbar
       {...props}
       className={cn(
-        'fixed top-[97px] z-10 justify-between overflow-x-auto rounded-t-lg border-b border-b-border bg-background/95 p-1 backdrop-blur-sm supports-backdrop-blur:bg-background/60',
+        'fixed top-[96px] z-10 justify-between overflow-x-auto rounded-t-lg border-b border-b-border bg-background/95 p-1 backdrop-blur-sm supports-backdrop-blur:bg-background/60',
         'scrollbar-thin scrollbar-hide',
         '[&::-webkit-scrollbar]:hidden',
         isSidebarExpanded 

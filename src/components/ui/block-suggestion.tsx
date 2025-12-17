@@ -26,21 +26,10 @@ import { useEditorPlugin, usePluginOption } from 'platejs/react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import {
-  type TDiscussion,
-  discussionPlugin,
-} from '@/components/plate-kits/discussion-kit';
+
 import { suggestionPlugin } from '@/components/plate-kits/suggestion-kit';
 
-import {
-  type TComment,
-  Comment,
-  CommentCreateForm,
-  formatCommentDate,
-} from './comment';
-
 export interface ResolvedSuggestion extends TResolvedSuggestion {
-  comments: TComment[];
 }
 
 const BLOCK_SUGGESTION = '__block__';
@@ -86,7 +75,7 @@ export function BlockSuggestionCard({
 }) {
   const { api, editor } = useEditorPlugin(SuggestionPlugin);
 
-  const userInfo = usePluginOption(discussionPlugin, 'user', suggestion.userId);
+  const userInfo = { name: 'User', avatarUrl: undefined };
 
   const accept = (suggestion: ResolvedSuggestion) => {
     api.suggestion.withoutSuggestions(() => {
@@ -129,7 +118,7 @@ export function BlockSuggestionCard({
           </h4>
           <div className="text-muted-foreground/80 text-xs leading-none">
             <span className="mr-1">
-              {formatCommentDate(new Date(suggestion.createdAt))}
+              {new Date(suggestion.createdAt).toLocaleString()}
             </span>
           </div>
         </div>
@@ -206,18 +195,6 @@ export function BlockSuggestionCard({
           </div>
         </div>
 
-        {suggestion.comments.map((comment, index) => (
-          <Comment
-            key={comment.id ?? index}
-            comment={comment}
-            discussionLength={suggestion.comments.length}
-            documentContent="__suggestion__"
-            editingId={editingId}
-            index={index}
-            setEditingId={setEditingId}
-          />
-        ))}
-
         {hovering && (
           <div className="absolute top-4 right-4 flex gap-2">
             <Button
@@ -237,8 +214,6 @@ export function BlockSuggestionCard({
             </Button>
           </div>
         )}
-
-        <CommentCreateForm discussionId={suggestion.suggestionId} />
       </div>
 
       {!isLast && <div className="h-px w-full bg-muted" />}
@@ -250,8 +225,6 @@ export const useResolveSuggestion = (
   suggestionNodes: NodeEntry<TElement | TSuggestionText>[],
   blockPath: Path
 ) => {
-  const discussions = usePluginOption(discussionPlugin, 'discussions');
-
   const { api, editor, getOption, setOption } =
     useEditorPlugin(suggestionPlugin);
 
@@ -404,16 +377,12 @@ export const useResolveSuggestion = (
 
       if (!nodeData) return;
 
-      // const comments = data?.discussions.find((d) => d.id === id)?.comments;
-      const comments =
-        discussions.find((s: TDiscussion) => s.id === id)?.comments || [];
       const createdAt = new Date(nodeData.createdAt);
 
       const keyId = getSuggestionKey(id);
 
       if (nodeData.type === 'update') {
         res.push({
-          comments,
           createdAt,
           keyId,
           newProperties,
@@ -425,7 +394,6 @@ export const useResolveSuggestion = (
         });
       } else if (newText.length > 0 && text.length > 0) {
         res.push({
-          comments,
           createdAt,
           keyId,
           newText,
@@ -436,7 +404,6 @@ export const useResolveSuggestion = (
         });
       } else if (newText.length > 0) {
         res.push({
-          comments,
           createdAt,
           keyId,
           newText,
@@ -446,7 +413,6 @@ export const useResolveSuggestion = (
         });
       } else if (text.length > 0) {
         res.push({
-          comments,
           createdAt,
           keyId,
           suggestionId: keyId2SuggestionId(id),
@@ -461,7 +427,6 @@ export const useResolveSuggestion = (
   }, [
     api.suggestion,
     blockPath,
-    discussions,
     editor.api,
     getOption,
     suggestionNodes,
@@ -471,5 +436,5 @@ export const useResolveSuggestion = (
 };
 
 export const isResolvedSuggestion = (
-  suggestion: ResolvedSuggestion | TDiscussion
+  suggestion: ResolvedSuggestion
 ): suggestion is ResolvedSuggestion => 'suggestionId' in suggestion;

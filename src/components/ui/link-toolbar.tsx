@@ -44,7 +44,6 @@ export function LinkFloatingToolbar({
 }: {
   state?: LinkFloatingToolbarState;
 }) {
-  const activeCommentId = usePluginOption({ key: KEYS.comment }, 'activeId');
   const activeSuggestionId = usePluginOption(
     { key: KEYS.suggestion },
     'activeId'
@@ -60,9 +59,9 @@ export function LinkFloatingToolbar({
         }),
       ],
       placement:
-        activeSuggestionId || activeCommentId ? 'top-start' : 'bottom-start',
+        activeSuggestionId ? 'top-start' : 'bottom-start',
     }),
-    [activeCommentId, activeSuggestionId]
+    [activeSuggestionId]
   );
 
   const insertState = useFloatingLinkInsertState({

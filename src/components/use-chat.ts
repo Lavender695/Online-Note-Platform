@@ -14,7 +14,7 @@ import { type PlateEditor, useEditorRef, usePluginOption } from 'platejs/react';
 
 import { aiChatPlugin } from '@/components/plate-kits/ai-kit';
 
-import { discussionPlugin } from '@/components/plate-kits/discussion-kit';
+
 
 export type ToolName = 'comment' | 'edit' | 'generate';
 
@@ -128,8 +128,7 @@ export const useChat = () => {
 
         if (!range) return console.warn('No range found for AI comment');
 
-        const discussions =
-          editor.getOption(discussionPlugin, 'discussions') || [];
+        const discussions: any[] = [];
 
         // Generate a new discussion ID
         const discussionId = nanoid();
@@ -141,7 +140,7 @@ export const useChat = () => {
           createdAt: new Date(),
           discussionId,
           isEdited: false,
-          userId: editor.getOption(discussionPlugin, 'currentUserId'),
+          userId: 'default',
         };
 
         // Create a new discussion
@@ -153,12 +152,12 @@ export const useChat = () => {
             .map((node: TNode) => NodeApi.string(node))
             .join('\n'),
           isResolved: false,
-          userId: editor.getOption(discussionPlugin, 'currentUserId'),
+          userId: 'default',
         };
 
         // Update discussions
         const updatedDiscussions = [...discussions, newDiscussion];
-        editor.setOption(discussionPlugin, 'discussions', updatedDiscussions);
+        // 讨论功能已移除，不再更新讨论列表
 
         // Apply comment marks to the editor
         editor.tf.withMerging(() => {

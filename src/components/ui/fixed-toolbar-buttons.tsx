@@ -17,7 +17,7 @@ import { KEYS } from 'platejs';
 import { useEditorReadOnly } from 'platejs/react';
 
 import { AlignToolbarButton } from './align-toolbar-button';
-import { CommentToolbarButton } from './comment-toolbar-button';
+
 import { FontColorToolbarButton } from './font-color-toolbar-button';
 import { FontSizeToolbarButton } from './font-size-toolbar-button';
 import { RedoToolbarButton, UndoToolbarButton } from './history-toolbar-button';
@@ -113,7 +113,6 @@ export function FixedToolbarButtons() {
         <MarkToolbarButton nodeType={KEYS.highlight} tooltip="Highlight">
           <HighlighterIcon />
         </MarkToolbarButton>
-        <CommentToolbarButton />
       </ToolbarGroup>
 
       <ToolbarGroup>
