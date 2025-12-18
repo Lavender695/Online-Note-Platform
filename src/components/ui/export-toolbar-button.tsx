@@ -33,6 +33,7 @@ export function ExportToolbarButton() {
     document.head.append(style);
 
     const canvas = await html2canvas(editor.api.toDOMNode(editor)!, {
+      useCORS: true,
       onclone: (document: Document) => {
         const editorElement = document.querySelector(
           '[contenteditable="true"]'
