@@ -12,7 +12,7 @@ export const ourFileRouter = {
       name: file.name,
       size: file.size,
       type: file.type,
-      url: file.ufsUrl,
+      url: file.url,
     })),
 } satisfies FileRouter;
 

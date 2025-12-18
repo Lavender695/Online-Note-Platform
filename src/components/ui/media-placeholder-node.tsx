@@ -93,6 +93,9 @@ export const PlaceholderElement = withHOC(
       if (!uploadedFile) return;
 
       const path = editor.api.findPath(element);
+      
+      // 添加此行：如果找不到路径（节点已被删除），则直接返回
+      if (!path) return;
 
       editor.tf.withoutSaving(() => {
         editor.tf.removeNodes({ at: path });
