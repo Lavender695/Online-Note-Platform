@@ -11,7 +11,7 @@ type Props = {
 const Header = ({ className }: Props) => {
   return (
     <div className={cn(
-      'fixed top-0 left-0 right-0 z-100 flex h-[40px] items-center justify-between px-4 bg-background border-b border-border shadow-sm transition-all duration-200',
+      'fixed top-0 left-0 right-0 z-100 flex h-10 items-center justify-between px-4 bg-background border-b border-border shadow-sm transition-all duration-200',
       className
     )}>
       <Logo />
