@@ -65,7 +65,7 @@ export function PlateEditor({ note }: Props) {
     }
   }, [note]);
 
-  // 监听��线/离线状态
+  // 监听线/离线状态
   React.useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
@@ -292,26 +292,7 @@ export function PlateEditor({ note }: Props) {
     return () => clearTimeout(autoSaveTimer);
   }, [userActivityTime, editor?.children, tags]);
 
-  // 根据sidebar状态调整按钮位置
-  React.useEffect(() => {
-    const updateButtonPosition = () => {
-      const buttonContainer = document.querySelector('.button-container-bottom-left') as HTMLElement | null;
-      if (buttonContainer) {
-        if (document.body.classList.contains('sidebar-expanded')) {
-          buttonContainer.style.left = '17rem';
-        } else {
-          buttonContainer.style.left = '2rem';
-        }
-      }
-    };
-
-    updateButtonPosition();
-    const observer = new MutationObserver(updateButtonPosition);
-    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
-  }, []);
-
-  // 监听用户活跃度
+  // 监���用户活跃度
   React.useEffect(() => {
     const handleActivity = () => handleUserActivity();
     const editorElement = document.querySelector('.slate-editor');
@@ -365,14 +346,14 @@ export function PlateEditor({ note }: Props) {
   return (
     <Plate editor={editor} onChange={handleUserActivity}>
       {/* 标签输入区域 */}
-      <div className={`border-b border-border px-8 py-3 z-50 bg-background sticky top-0 w-screen`}>
+      <div className={`border-b border-border px-8 py-3 z-50 bg-background sticky top-0 w-full`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             {/* 标签输入和下拉菜单 */}
             <div className="relative" ref={tagDropdownRef}>
               <button
                 onClick={() => setShowTagDropdown(!showTagDropdown)}
-                className="flex items-center gap-1 px-3 py-1 border border-input rounded-full text-sm hover:bg-background/80 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="flex items-center gap-1 px-3 py-1 border border-input rounded-full text-sm hover:bg-background/80 focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
               >
                 {tagInput ? tagInput : '标签'}
                 <span className={`transform transition-transform ${showTagDropdown ? 'rotate-180' : ''}`}>
@@ -401,7 +382,7 @@ export function PlateEditor({ note }: Props) {
                             className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded-full text-xs"
                           >
                             {tag}
-                            <button onClick={() => removeTag(tag)} className="hover:text-primary/70 focus:outline-none">✕</button>
+                            <button onClick={() => removeTag(tag)} className="hover:text-primary/70 focus:outline-none cursor-pointer">✕</button>
                           </span>
                         ))}
                       </div>
@@ -422,7 +403,7 @@ export function PlateEditor({ note }: Props) {
                               setTagInput('');
                               setShowTagDropdown(false);
                             }}
-                          className={`w-full px-3 py-2 text-left text-sm hover:bg-primary/10 transition-colors ${tags.includes(availableTag) ? 'text-muted-foreground' : 'text-foreground'}`}
+                          className={`w-full px-3 py-2 text-left text-sm hover:bg-primary/10 transition-colors cursor-pointer ${tags.includes(availableTag) ? 'text-muted-foreground' : 'text-foreground'}`}
                           disabled={tags.includes(availableTag)}
                         >
                           <span className="flex items-center justify-between">
@@ -443,7 +424,7 @@ export function PlateEditor({ note }: Props) {
                           addTag();
                           setShowTagDropdown(false);
                         }}
-                        className="w-full px-3 py-2 bg-primary/10 text-primary text-sm rounded hover:bg-primary/20 transition-colors"
+                        className="w-full px-3 py-2 bg-primary/10 text-primary text-sm rounded hover:bg-primary/20 transition-colors cursor-pointer"
                       >
                         创建新标签: {tagInput.trim()}
                       </button>
@@ -454,7 +435,19 @@ export function PlateEditor({ note }: Props) {
             </div>
           </div>
           
-          <div className="flex gap-2 fixed right-5">
+          <div className="flex gap-2">
+            {/* AI 按钮移到顶部 */}
+            <Button 
+              onClick={() => setShowAIToolbar(!showAIToolbar)} 
+              variant={showAIToolbar ? "default" : "secondary"} 
+              size="sm" 
+              className="flex items-center gap-2 cursor-pointer"
+              aria-label="AI 助手"
+            >
+              <Sparkles className="h-3 w-3" />
+              <span className="hidden sm:inline">AI 助手</span>
+            </Button>
+
             <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
               <DialogTrigger asChild>
                 <Button variant="secondary" size="sm" className="flex items-center gap-2 cursor-pointer">
@@ -467,8 +460,8 @@ export function PlateEditor({ note }: Props) {
                   <DialogDescription>您确定要清空当前文档吗？此操作无法撤销，但笔记本身不会被删除。</DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                  <Button variant="ghost" onClick={() => setShowClearDialog(false)}>取消</Button>
-                  <Button variant="destructive" onClick={handleClearDocument}>确认清空</Button>
+                  <Button variant="ghost" onClick={() => setShowClearDialog(false)} className="cursor-pointer">取消</Button>
+                  <Button variant="destructive" onClick={handleClearDocument} className="cursor-pointer">确认清空</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -486,8 +479,8 @@ export function PlateEditor({ note }: Props) {
                     <DialogDescription>您确定要删除这篇笔记吗？此操作无法撤销。</DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
-                    <Button variant="ghost" onClick={() => setShowDeleteDialog(false)}>取消</Button>
-                    <Button variant="destructive" onClick={handleDeleteNote}>确认删除</Button>
+                    <Button variant="ghost" onClick={() => setShowDeleteDialog(false)} className="cursor-pointer">取消</Button>
+                    <Button variant="destructive" onClick={handleDeleteNote} className="cursor-pointer">确认删除</Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -511,18 +504,19 @@ export function PlateEditor({ note }: Props) {
       </div>
 
       <EditorContainer className="relative w-full max-w-full m-0">
-        <Editor className="min-h-[500px] min-w-[70vw] w-full max-w-full mx-5 overflow-x-hidden overflow-y-auto whitespace-pre-wrap wrap-break-word rounded-b-lg bg-background text-sm" />
+        <Editor className="min-h-[500px] min-w-[70vw] w-full max-w-full overflow-x-hidden overflow-y-auto whitespace-pre-wrap wrap-break-word rounded-b-lg bg-background text-sm" />
         
         {lastSaved && (
-          <div className="fixed top-40 right-4 z-10 text-xs text-muted-foreground whitespace-nowrap">
+          <div className="fixed top-25 right-4 z-10 text-xs text-muted-foreground whitespace-nowrap pointer-events-none">
             自动保存于: {lastSaved.toLocaleTimeString()}
           </div>
         )}
         
+        {/* AI 面板弹出位置调整，放在右上角贴近工具栏 */}
         {showAIToolbar && (
-          <div className="fixed bottom-20 right-4 z-100 bg-muted border rounded-lg shadow-lg p-4 w-80">
+          <div className="fixed top-16 right-4 z-[100] bg-background/95 backdrop-blur-sm border rounded-lg shadow-xl p-4 w-[calc(100vw-2rem)] sm:w-80">
             <div className="flex justify-end mb-2">
-              <Button onClick={() => setShowAIToolbar(false)} variant="ghost" size="icon" className="h-6 w-6">
+              <Button onClick={() => setShowAIToolbar(false)} variant="ghost" size="icon" className="h-6 w-6 cursor-pointer">
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -530,17 +524,12 @@ export function PlateEditor({ note }: Props) {
           </div>
         )}
         
-        <div className="fixed bottom-8 right-8 flex items-center gap-2 z-10">
-          <Button onClick={() => setShowAIToolbar(!showAIToolbar)} variant="outline" size="icon" className="h-8 w-8" aria-label="AI 助手">
-            <Sparkles className="h-4 w-4" />
-          </Button>
-          
-          {isOffline && (
-            <div className="flex items-center gap-1 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
-              <Database className="h-3 w-3" /> 离线模式
-            </div>
-          )}
-        </div>
+        {/* 底部只保留离线状态提示 */}
+        {isOffline && (
+          <div className="fixed bottom-4 right-4 z-10 flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full shadow-sm border border-yellow-200">
+            <Database className="h-3 w-3" /> 离线模式
+          </div>
+        )}
       </EditorContainer>
     </Plate>
   );

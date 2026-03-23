@@ -24,7 +24,6 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 
-// 引入刚刚从 Header 迁移过来的组件
 import UserAvatar from '@/components/layout/home/header/avatar/Avatar';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
