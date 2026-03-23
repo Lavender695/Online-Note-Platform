@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Note } from '@/types/note';
 import { useNotes } from '@/hooks/use-notes';
-import { useAuth } from '@/hooks/use-auth';
+import { useUser } from '@clerk/nextjs';
 import { toast } from 'sonner';
 import { Save, Cloud, Trash2, Eraser, Sparkles, X, Database } from 'lucide-react';
 import type { MyValue, RichText } from '@/components/plate-types';
@@ -29,7 +29,8 @@ type Props = {
 };
 
 export function PlateEditor({ note }: Props) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, isLoaded } = useUser();
+  const authLoading = !isLoaded
   const { createNote, updateNote, deleteNotes, notes, getAllTags } = useNotes();
   const { state } = useSidebar();
   const [saving, setSaving] = React.useState(false);
@@ -578,7 +579,7 @@ export function PlateEditor({ note }: Props) {
   return (
     <Plate editor={editor} onChange={handleUserActivity}>
       {/* 标签输入区域 */}
-      <div className={`border-b border-border px-8 py-3 top-0 z-50 bg-background fixed top-[40px] w-[100vw]`}>
+      <div className={`border-b border-border px-8 py-3 z-50 bg-background fixed top-10 w-screen`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             {/* 标签输入和下拉菜单 */}
@@ -763,7 +764,7 @@ export function PlateEditor({ note }: Props) {
 
       <EditorContainer className="relative w-full max-w-full m-0 mt-14">
         <Editor 
-          className="min-h-[500px] min-w-[70vw] w-full max-w-full mx-5 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-b-lg bg-background text-sm"
+          className="min-h-[500px] min-w-[70vw] w-full max-w-full mx-5 overflow-x-hidden overflow-y-auto whitespace-pre-wrap wrap-break-word rounded-b-lg bg-background text-sm"
         />
         
         {/* 最后保存时间 - 右上角（toolbar下方） */}

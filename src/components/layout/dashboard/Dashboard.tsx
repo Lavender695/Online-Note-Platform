@@ -2,60 +2,46 @@
 import React, { useState, useEffect } from 'react'
 import NoteCard from './NoteCard'
 import { useNotes } from '@/hooks/use-notes'
-import { useAuth } from '@/hooks/use-auth'
+import { useUser } from '@clerk/nextjs' // 🌟 引入 Clerk
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Trash2, Edit, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { supabase } from '@/lib/supabase'
 
 type Props = {}
 
 const Dashboard = (props: Props) => {
   const { notes, loading: notesLoading, error, deleteNotes, getAllTags } = useNotes()
-  const { user } = useAuth()
+  const { user, isLoaded } = useUser() // 🌟 使用 Clerk 状态
   const [isEditMode, setIsEditMode] = useState(false)
   const [selectedNotes, setSelectedNotes] = useState<string[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [allTags, setAllTags] = useState<string[]>([])
   const [greeting, setGreeting] = useState('')
-  const [userName, setUserName] = useState('')
-  const [loading, setLoading] = useState(true)
 
   // 获取所有标签
-  React.useEffect(() => {
+  useEffect(() => {
     const tags = getAllTags()
     setAllTags(tags)
-    console.log('Dashboard获取的所有标签:', tags)
   }, [notes, getAllTags])
 
-  // 获取用户昵称和设置问候语
+  // 设置问候语
   useEffect(() => {
-    const fetchUserName = async () => {
-      if (user) {
-        const { data } = await supabase.from('users').select('name').eq('id', user.id).single();
-        if (data?.name) {
-          setUserName(data.name);
-        }
-      }
-      setLoading(false);
-    };
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      setGreeting('早上好');
+    } else if (hour >= 12 && hour < 18) {
+      setGreeting('下午好');
+    } else {
+      setGreeting('晚上好');
+    }
+  }, []);
 
-    // 设置问候语
-    const setGreetingBasedOnTime = () => {
-      const hour = new Date().getHours();
-      if (hour >= 5 && hour < 12) {
-        setGreeting('早上好');
-      } else if (hour >= 12 && hour < 18) {
-        setGreeting('下午好');
-      } else {
-        setGreeting('晚上好');
-      }
-    };
-
-    fetchUserName();
-    setGreetingBasedOnTime();
-  }, [user]);
+  // 🌟 从 Clerk 的 user 对象中智能提取名称
+  const getDisplayName = () => {
+    if (!user) return '';
+    return user.fullName || user.username || user.primaryEmailAddress?.emailAddress.split('@')[0] || '探索者';
+  }
 
   // 筛选后的笔记
   const filteredNotes = selectedTags.length === 0
@@ -67,48 +53,16 @@ const Dashboard = (props: Props) => {
   // 切换标签选择
   const toggleTagSelection = (tag: string) => {
     setSelectedTags(prev => {
-      if (prev.includes(tag)) {
-        return prev.filter(t => t !== tag)
-      } else {
-        return [...prev, tag]
-      }
+      if (prev.includes(tag)) return prev.filter(t => t !== tag)
+      return [...prev, tag]
     })
   }
 
   // 清除所有选中标签
-  const clearSelectedTags = () => {
-    setSelectedTags([])
-  }
+  const clearSelectedTags = () => setSelectedTags([])
 
-  // 获取用户昵称和设置问候语
-  useEffect(() => {
-    const fetchUserName = async () => {
-      if (user) {
-        const { data } = await supabase.from('users').select('name').eq('id', user.id).single();
-        if (data?.name) {
-          setUserName(data.name);
-        }
-      }
-      setLoading(false);
-    };
-
-    // 设置问候语
-    const setGreetingBasedOnTime = () => {
-      const hour = new Date().getHours();
-      if (hour >= 5 && hour < 12) {
-        setGreeting('早上好');
-      } else if (hour >= 12 && hour < 18) {
-        setGreeting('下午好');
-      } else {
-        setGreeting('晚上好');
-      }
-    };
-
-    fetchUserName();
-    setGreetingBasedOnTime();
-  }, [user]);
-
-  if (loading || notesLoading) {
+  // UI 加载状态
+  if (!isLoaded || notesLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-48px)]">
         <div className="text-xl text-muted-foreground">加载中...</div>
@@ -126,11 +80,8 @@ const Dashboard = (props: Props) => {
 
   const toggleNoteSelection = (noteId: string) => {
     setSelectedNotes(prev => {
-      if (prev.includes(noteId)) {
-        return prev.filter(id => id !== noteId)
-      } else {
-        return [...prev, noteId]
-      }
+      if (prev.includes(noteId)) return prev.filter(id => id !== noteId)
+      return [...prev, noteId]
     })
   }
 
@@ -157,7 +108,7 @@ const Dashboard = (props: Props) => {
       <div className="mb-6 flex-col justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground">
-            {greeting}{userName && `，${userName}`}
+            {greeting}，{getDisplayName()}
           </h1>
           <p className="text-muted-foreground mt-1">这是您的所有笔记</p>
         </div>
