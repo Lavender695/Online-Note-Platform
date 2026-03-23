@@ -104,7 +104,7 @@ const Dashboard = (props: Props) => {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 h-full bg-background">
       <div className="mb-6 flex-col justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground">
