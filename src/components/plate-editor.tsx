@@ -503,7 +503,7 @@ export function PlateEditor({ note }: Props) {
         </div>
       </div>
 
-      <EditorContainer className="relative w-full max-w-full m-0">
+      <EditorContainer className="relative w-full max-w-full mt-10">
         <Editor className="min-h-[500px] min-w-[70vw] w-full max-w-full overflow-x-hidden overflow-y-auto whitespace-pre-wrap wrap-break-word rounded-b-lg bg-background text-sm" />
         
         {lastSaved && (
