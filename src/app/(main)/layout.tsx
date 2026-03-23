@@ -13,7 +13,7 @@ export default function MainLayout({
         <AppSidebar />
         
         <div className="flex flex-1 flex-col overflow-hidden relative">
-          <SidebarTrigger className="fixed bottom-5 right-5 z-100 bg-background/80 backdrop-blur-sm shadow-sm border border-border hover:shadow-md transition-shadow" />
+          <SidebarTrigger className="md:hidden fixed bottom-5 right-5 z-100 bg-background/80 backdrop-blur-sm shadow-sm border border-border hover:shadow-md transition-shadow" />
           
           <main className="flex-1 w-full h-full overflow-hidden">
             {children}

@@ -38,7 +38,7 @@ export function AppSidebar() {
   const pathname = usePathname();
 
   return (
-    <Sidebar variant="inset" collapsible="icon">
+    <Sidebar variant="inset">
       {/* 顶部：应用名称和 Logo */}
       <SidebarHeader className="border-b border-sidebar-border h-[60px] flex items-center justify-center px-4">
         <div className="flex items-center gap-2 w-full overflow-hidden">
