@@ -346,7 +346,7 @@ export function PlateEditor({ note }: Props) {
   return (
     <Plate editor={editor} onChange={handleUserActivity}>
       {/* 标签输入区域 */}
-      <div className={`border-b border-border px-8 py-3 z-50 bg-background sticky top-0 w-full`}>
+      <div className={`border-b border-border px-8 py-3 z-50 bg-background fixed top-0 w-[calc(100vw-16rem)]`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             {/* 标签输入和下拉菜单 */}
@@ -371,7 +371,7 @@ export function PlateEditor({ note }: Props) {
                     placeholder="搜索或创建标签..."
                     className="w-full px-3 py-2 border-b border-input text-sm focus:outline-none"
                   />
-                  
+                      
                   {tags.length > 0 && (
                     <div className="px-3 py-2 border-b border-input">
                       <div className="text-xs text-muted-foreground mb-1">已添加标签</div>
