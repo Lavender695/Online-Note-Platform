@@ -365,7 +365,7 @@ export function PlateEditor({ note }: Props) {
   return (
     <Plate editor={editor} onChange={handleUserActivity}>
       {/* 标签输入区域 */}
-      <div className={`border-b border-border px-8 py-3 z-50 bg-background fixed top-10 w-screen`}>
+      <div className={`border-b border-border px-8 py-3 z-50 bg-background sticky top-0 w-screen`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             {/* 标签输入和下拉菜单 */}
@@ -510,7 +510,7 @@ export function PlateEditor({ note }: Props) {
         </div>
       </div>
 
-      <EditorContainer className="relative w-full max-w-full m-0 mt-14">
+      <EditorContainer className="relative w-full max-w-full m-0">
         <Editor className="min-h-[500px] min-w-[70vw] w-full max-w-full mx-5 overflow-x-hidden overflow-y-auto whitespace-pre-wrap wrap-break-word rounded-b-lg bg-background text-sm" />
         
         {lastSaved && (

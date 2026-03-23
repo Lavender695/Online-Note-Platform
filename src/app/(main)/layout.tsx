@@ -1,6 +1,5 @@
 'use client';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import Header from '@/components/layout/Header';
 import { AppSidebar } from '@/components/layout/home/AppSidebar';
 
 export default function MainLayout({
@@ -10,15 +9,16 @@ export default function MainLayout({
 }>) {
   return (
     <SidebarProvider>
-      <div className="min-h-screen max-w-screen">
-        <Header />
-        <div className="pt-10 flex flex-1">
-          <AppSidebar />
-          <div className="flex-1 overflow-hidden">
+      <div className="flex min-h-screen w-full">
+        <AppSidebar />
+        
+        <div className="flex flex-1 flex-col overflow-hidden relative">
+          <SidebarTrigger className="fixed bottom-5 right-5 z-100 bg-background/80 backdrop-blur-sm shadow-sm border border-border hover:shadow-md transition-shadow" />
+          
+          <main className="flex-1 w-full h-full overflow-hidden">
             {children}
-          </div>
+          </main>
         </div>
-        <SidebarTrigger className="fixed bottom-20 left-4 z-500 md:bottom-20 bg-background shadow-lg hover:shadow-xl transition-shadow" />
       </div>
     </SidebarProvider>
   );
