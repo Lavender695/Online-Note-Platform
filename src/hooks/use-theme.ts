@@ -8,17 +8,6 @@ export function useTheme() {
   const [theme, setTheme] = useState<Theme>('light');
   const [isMounted, setIsMounted] = useState(false);
 
-  useEffect(() => {
-    setIsMounted(true);
-    // 从localStorage获取保存的主题
-    const savedTheme = localStorage.getItem('theme') as Theme;
-    // 如果没有保存的主题，使用系统主题偏好
-    const preferredTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    const initialTheme = savedTheme || preferredTheme;
-    setTheme(initialTheme);
-    applyTheme(initialTheme);
-  }, []);
-
   const applyTheme = (newTheme: Theme) => {
     // 移除所有自定义主题类
     document.documentElement.classList.remove('blue', 'green', 'purple');
@@ -35,6 +24,18 @@ export function useTheme() {
       }
     }
   };
+
+  useEffect(() => {  
+    setIsMounted(true);
+    // 从localStorage获取保存的主题
+    const savedTheme = localStorage.getItem('theme') as Theme;
+    // 如果没有保存的主题，使用系统主题偏好
+    const preferredTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const initialTheme = savedTheme || preferredTheme;
+    setTheme(initialTheme);
+    applyTheme(initialTheme);
+  }, []);
+
 
   const setThemeMode = (newTheme: Theme) => {
     setTheme(newTheme);

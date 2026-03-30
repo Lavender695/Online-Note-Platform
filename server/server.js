@@ -1,5 +1,5 @@
 // server.js
-const WebSocket = require('ws')
+import * as WebSocket from 'ws'
 
 // 使用环境变量中的 PORT，如果没有则使用 4444
 const port = process.env.PORT || 4444 

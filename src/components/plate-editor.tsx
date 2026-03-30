@@ -35,6 +35,7 @@ export function PlateEditor({ note }: Props) {
   const [userActivityTime, setUserActivityTime] = React.useState(Date.now());
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [showClearDialog, setShowClearDialog] = React.useState(false);
+  const [activeNoteId, setActiveNoteId] = React.useState<string | null>(note?.id ?? null);
   
   // 原生离线状态检测
   const [isOffline, setIsOffline] = React.useState(typeof navigator !== 'undefined' ? !navigator.onLine : false);
@@ -45,6 +46,10 @@ export function PlateEditor({ note }: Props) {
   const [showTagDropdown, setShowTagDropdown] = React.useState(false);
   const [allTags, setAllTags] = React.useState<string[]>([]);
   const tagDropdownRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    setActiveNoteId(note?.id ?? null);
+  }, [note?.id]);
 
   // 获取 Storage Key
   const getLocalStorageKey = React.useCallback(() => {
@@ -239,11 +244,12 @@ export function PlateEditor({ note }: Props) {
         return;
       }
 
-      if (note) {
-        await updateNote(note.id, title, content, tags);
+      if (activeNoteId) {
+        await updateNote(activeNoteId, title, content, tags);
         if (isManualSave) toast.success('笔记已更新');
       } else {
-        await createNote(title, content, tags);
+        const createdNote = await createNote(title, content, tags);
+        setActiveNoteId(createdNote.id);
         if (isManualSave) toast.success('笔记已保存');
         // 保存后清理本地“新建草稿”缓存
         localStorage.removeItem('new_note_draft');

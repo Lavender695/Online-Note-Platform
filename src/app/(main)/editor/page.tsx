@@ -19,5 +19,5 @@ export default function EditorPage() {
     return <div className="flex items-center justify-center h-screen text-xl text-red-500">{error}</div>;
   }
 
-  return <PlateEditor note={note} />;
+  return <PlateEditor key={noteId ?? 'new-note'} note={note} />;
 }

@@ -316,7 +316,7 @@ function EmojiPickerContent({
 
   return (
     <div
-      // eslint-disable-next-line react-hooks/refs
+       
       ref={refs.current.contentRoot as React.RefObject<HTMLDivElement>}
       className={cn(
         'h-full min-h-[50%] overflow-y-auto overflow-x-hidden px-2',        
