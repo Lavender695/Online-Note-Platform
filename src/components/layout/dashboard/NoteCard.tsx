@@ -17,9 +17,10 @@ type Props = {
   isSelected?: boolean
   onSelect?: (id: string) => void
   isEditMode?: boolean
+  className?: string
 }
 
-const NoteCard = ({ note, isSelected = false, onSelect, isEditMode = false }: Props) => {
+const NoteCard = ({ note, isSelected = false, onSelect, isEditMode = false, className }: Props) => {
   // Format date for display
   const formattedDate = new Date(note.created_at).toLocaleString('zh-CN', {
     year: 'numeric',
@@ -31,17 +32,15 @@ const NoteCard = ({ note, isSelected = false, onSelect, isEditMode = false }: Pr
 
   const plainText = note.content
     ? normalizeNodeId(JSON.parse(note.content))
-        .map((node: any) => {
-          if (node.children[0].text) return node.children[0].text
-          return ''
-        })
+        .map((node: { children?: Array<{ text?: string }> }) => node.children?.[0]?.text ?? '')
         .join(' ')
     : ''
   return (
     <Card className={cn(
-      'h-full flex flex-col hover:shadow-xl transition-all duration-300 cursor-pointer',
+      'relative h-full flex flex-col hover:shadow-xl transition-all duration-300 cursor-pointer',
       'border border-border hover:border-border hover:-translate-y-1',
-      isSelected && 'border-primary bg-primary/10'
+      isSelected && 'border-primary bg-primary/10',
+      className
     )}>
       {isEditMode && (
         <div 
@@ -78,7 +77,7 @@ const NoteCard = ({ note, isSelected = false, onSelect, isEditMode = false }: Pr
             {formattedDate}
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex-1 py-2">
+        <CardContent className="flex-1 overflow-hidden py-2">
           <div className="text-sm text-muted-foreground line-clamp-4">
             {plainText.substring(0, 120)}{plainText.length > 120 ? '...' : ''}
           </div>

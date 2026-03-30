@@ -1,215 +1,181 @@
-'use client';
-import React, { useState, useEffect } from 'react';
-import { useDebounce } from '@/hooks/use-debounce';
-import { Search, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import NoteCard from '@/components/layout/dashboard/NoteCard';
-import { useNotes } from '@/hooks/use-notes';
+﻿'use client'
+
+import React, { useEffect, useMemo, useState } from 'react'
+import { Search, X } from 'lucide-react'
+
+import LazyNoteGrid from '@/components/layout/dashboard/LazyNoteGrid'
+import NoteCardSkeleton from '@/components/layout/dashboard/NoteCardSkeleton'
+import TagFilterPanel from '@/components/layout/dashboard/TagFilterPanel'
+import {
+  DASHBOARD_NOTE_CARD_CLASSNAME,
+  DASHBOARD_NOTE_GRID_CLASSNAME,
+} from '@/components/layout/dashboard/noteCardStyles'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { useDebounce } from '@/hooks/use-debounce'
+import { useNotes } from '@/hooks/use-notes'
+
+const SEARCH_SKELETON_COUNT = 8
 
 export default function SearchPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searching, setSearching] = useState(false);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [allTags, setAllTags] = useState<string[]>([]);
-  const { notes, loading, error, searchNotes, searchResults, getAllTags } = useNotes();
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const { loading, error, searchNotes, searchResults, getAllTags } = useNotes()
 
-  // 获取所有标签
-  React.useEffect(() => {
-    const tags = getAllTags();
-    setAllTags(tags);
-  }, [notes, getAllTags]);
-  
-  // 使用防抖钩子，延迟300ms执行搜索
-  const debouncedQuery = useDebounce(searchQuery, 300);
+  const debouncedQuery = useDebounce(searchQuery, 300)
+  const allTags = useMemo(() => getAllTags(), [getAllTags])
+  const normalizedQuery = debouncedQuery.trim()
+  const hasActiveSearch = normalizedQuery.length > 0 || selectedTags.length > 0
+  const isTyping = searchQuery.trim() !== normalizedQuery
+  const searchGridKey = useMemo(
+    () => searchResults.map((note) => note.id).join('|'),
+    [searchResults]
+  )
 
-  // 当防抖后的搜索关键词或选中标签变化时自动触发搜索
   useEffect(() => {
-    if (debouncedQuery.trim() || selectedTags.length > 0) {
-      setSearching(true);
-      // 使用从useNotes返回的searchNotes函数来更新搜索结果
-      searchNotes(debouncedQuery, selectedTags);
-      setTimeout(() => setSearching(false), 300);
-    } else {
-      // 如果搜索关键词和选中标签都为空，清除搜索结果
-      searchNotes('');
+    if (hasActiveSearch) {
+      searchNotes(normalizedQuery, selectedTags)
+      return
     }
-  }, [debouncedQuery, selectedTags, notes, searchNotes]);
 
-  // 切换标签选择
+    searchNotes('')
+  }, [hasActiveSearch, normalizedQuery, searchNotes, selectedTags])
+
   const toggleTagSelection = (tag: string) => {
-    setSelectedTags(prev => {
+    setSelectedTags((prev) => {
       if (prev.includes(tag)) {
-        return prev.filter(t => t !== tag);
-      } else {
-        return [...prev, tag];
+        return prev.filter((item) => item !== tag)
       }
-    });
-  };
 
-  // 清除所有选中标签
+      return [...prev, tag]
+    })
+  }
+
   const clearSelectedTags = () => {
-    setSelectedTags([]);
-  };
+    setSelectedTags([])
+  }
 
   const handleSearch = () => {
-    // 手动搜索时，直接使用当前输入的关键词，不经过防抖
-    setSearching(true);
-    searchNotes(searchQuery, selectedTags);
-    setTimeout(() => setSearching(false), 300); // 添加短暂延迟以显示搜索动画
-  };
+    searchNotes(searchQuery.trim(), selectedTags)
+  }
 
   const handleClear = () => {
-    setSearchQuery('');
-    searchNotes('');
-  };
+    setSearchQuery('')
+    searchNotes('', selectedTags)
+  }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      handleSearch()
     }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-48px)]">
-        <div className="text-xl text-muted-foreground">加载中...</div>
-      </div>
-    );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-48px)]">
+      <div className="flex min-h-[calc(100vh-48px)] items-center justify-center">
         <div className="text-xl text-destructive">{error}</div>
       </div>
-    );
+    )
   }
 
   return (
-    <div className="p-6 min-h-[calc(100vh-48px)] min-w-[calc(100vw-16rem)]">
-      <div className="mb-8 max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-foreground">搜索笔记</h1>
-        <p className="text-muted-foreground mt-1">搜索您的所有笔记内容</p>
-      </div>
-      
-      <div className="max-w-7xl mx-auto mb-8">
-        <div className="flex gap-2 max-w-3xl mx-auto">
-          <Input
-            type="text"
-            placeholder="输入搜索关键词..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyPress={handleKeyPress}
-            className="flex-1 text-lg py-6"
-          />
-          {searchQuery && (
-            <Button
-              variant="outline"
-              onClick={handleClear}
-              className="flex items-center justify-center w-[50px] h-[50px]"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          )}
-          <Button
-            onClick={handleSearch}
-            disabled={searching}
-            className="flex items-center gap-2 h-[50px]"
-          >
-            {searching ? (
-              <div className="h-5 w-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Search className="h-5 w-5" />
-            )}
-            搜索
-          </Button>
+    <div className="min-h-[calc(100vh-48px)] bg-background p-6">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-foreground">搜索笔记</h1>
+          <p className="mt-1 text-muted-foreground">按标题、内容和标签快速找到你要的笔记</p>
         </div>
-        
-        {/* 标签筛选 */}
-        <div className="mt-6 max-w-3xl mx-auto">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-sm font-medium">标签筛选:</span>
-            {selectedTags.length > 0 && (
-              <Button 
-                variant="ghost"
-                size="sm"
-                onClick={clearSelectedTags}
-                className="h-7 px-2"
-              >
-                清除筛选
-              </Button>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {allTags.length > 0 ? (
-              allTags.map(tag => (
-                <button
-                  key={tag}
-                  onClick={() => toggleTagSelection(tag)}
-                  className={`px-3 py-1 text-sm rounded-full transition-all duration-200 ${selectedTags.includes(tag) ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
-                >
-                  {tag}
-                </button>
-              ))
-            ) : (
-              <span className="text-sm text-muted-foreground">暂无标签</span>
-            )}
-          </div>
-        </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto">
-        {searchQuery ? (
-          searching ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-lg text-muted-foreground">正在搜索...</div>
+        <div className="mx-auto mb-8 flex max-w-5xl flex-col gap-6">
+          <section className="w-full rounded-2xl border border-border/70 bg-card/80 p-4 shadow-sm backdrop-blur-sm">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="输入关键词搜索标题或内容"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="h-12 rounded-xl border-border/70 bg-background pl-12 pr-12 text-base"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={handleClear}
+                    className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              <Button onClick={handleSearch} className="h-12 rounded-xl px-5">
+                <Search className="mr-2 h-4 w-4" />
+                搜索
+              </Button>
             </div>
+
+            <div className="mt-3 flex min-h-6 items-center justify-between gap-3 text-sm text-muted-foreground">
+              <span>{isTyping ? '正在输入，结果会自动更新…' : '支持关键词与标签组合筛选'}</span>
+              {hasActiveSearch && !isTyping && (
+                <span>
+                  找到 <span className="font-semibold text-foreground">{searchResults.length}</span> 条结果
+                </span>
+              )}
+            </div>
+          </section>
+
+          <TagFilterPanel
+            className="w-full"
+            tags={allTags}
+            selectedTags={selectedTags}
+            onToggleTag={toggleTagSelection}
+            onClear={clearSelectedTags}
+          />
+        </div>
+
+        {loading ? (
+          <div className={DASHBOARD_NOTE_GRID_CLASSNAME}>
+            {Array.from({ length: SEARCH_SKELETON_COUNT }).map((_, index) => (
+              <NoteCardSkeleton
+                key={`search-note-skeleton-${index}`}
+                className={DASHBOARD_NOTE_CARD_CLASSNAME}
+              />
+            ))}
+          </div>
+        ) : hasActiveSearch ? (
+          searchResults.length > 0 ? (
+            <LazyNoteGrid key={searchGridKey} notes={searchResults} />
           ) : (
-            searchResults.length > 0 ? (
-              <div>
-                <div className="mb-4">
-                  <p className="text-muted-foreground">找到 {searchResults.length} 个相关笔记</p>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {searchResults.map(note => (
-                    <NoteCard key={note.id} note={note} />
-                  ))}
-                </div>
+            <div className="flex min-h-72 flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/40 p-12 text-center">
+              <div className="mb-4 text-xl text-muted-foreground">没有找到匹配的笔记</div>
+              <p className="mb-4 text-muted-foreground">
+                {selectedTags.length > 0
+                  ? '试试更换关键词，或者减少已选择的标签。'
+                  : '试试更换关键词，或者检查一下输入是否完整。'}
+              </p>
+              <div className="flex gap-2">
+                {searchQuery && (
+                  <Button variant="outline" onClick={handleClear}>
+                    清除搜索
+                  </Button>
+                )}
+                {selectedTags.length > 0 && (
+                  <Button variant="outline" onClick={clearSelectedTags}>
+                    清除标签
+                  </Button>
+                )}
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center p-12">
-                <div className="text-xl text-muted-foreground mb-4">未找到匹配的笔记</div>
-                <p className="text-muted-foreground text-center mb-4">
-                  {selectedTags.length > 0 ? 
-                    '尝试使用不同的关键词或标签组合' : 
-                    '尝试使用不同的关键词或检查您的拼写'
-                  }
-                </p>
-                <div className="flex gap-2">
-                  {searchQuery && (
-                    <Button variant="outline" onClick={handleClear}>
-                      清除搜索
-                    </Button>
-                  )}
-                  {selectedTags.length > 0 && (
-                    <Button variant="outline" onClick={clearSelectedTags}>
-                      清除标签筛选
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )
+            </div>
           )
         ) : (
-          <div className="flex flex-col items-center justify-center p-12">
-            <div className="text-xl text-muted-foreground mb-4">开始搜索</div>
-            <p className="text-muted-foreground text-center mb-4">
-              输入关键词来搜索您的笔记标题和内容
-            </p>
+          <div className="flex min-h-72 flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/40 p-12 text-center">
+            <div className="mb-4 text-xl text-muted-foreground">开始搜索</div>
+            <p className="text-muted-foreground">输入关键词，或者直接点击标签来筛选你的笔记。</p>
           </div>
         )}
       </div>
     </div>
-  );
+  )
 }

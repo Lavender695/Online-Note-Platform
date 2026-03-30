@@ -1,86 +1,90 @@
-'use client';
-import React, { useState, useEffect } from 'react'
-import NoteCard from './NoteCard'
-import { useNotes } from '@/hooks/use-notes'
-import { useUser } from '@clerk/nextjs' // 🌟 引入 Clerk
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Trash2, Edit, X } from 'lucide-react'
+﻿'use client'
+
+import React, { useMemo, useState } from 'react'
+import { useUser } from '@clerk/nextjs'
+import { Edit, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 
-type Props = {}
+import { Button } from '@/components/ui/button'
+import { useNotes } from '@/hooks/use-notes'
+import { cn } from '@/lib/utils'
 
-const Dashboard = (props: Props) => {
+import LazyNoteGrid from './LazyNoteGrid'
+import NoteCardSkeleton from './NoteCardSkeleton'
+import TagFilterPanel from './TagFilterPanel'
+import {
+  DASHBOARD_NOTE_CARD_CLASSNAME,
+  DASHBOARD_NOTE_GRID_CLASSNAME,
+} from './noteCardStyles'
+
+const SKELETON_COUNT = 8
+
+const Dashboard = () => {
   const { notes, loading: notesLoading, error, deleteNotes, getAllTags } = useNotes()
-  const { user, isLoaded } = useUser() // 🌟 使用 Clerk 状态
+  const { user, isLoaded } = useUser()
   const [isEditMode, setIsEditMode] = useState(false)
   const [selectedNotes, setSelectedNotes] = useState<string[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [allTags, setAllTags] = useState<string[]>([])
-  const [greeting, setGreeting] = useState('')
 
-  // 获取所有标签
-  useEffect(() => {
-    const tags = getAllTags()
-    setAllTags(tags)
-  }, [notes, getAllTags])
+  const allTags = useMemo(() => getAllTags(), [getAllTags])
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours()
 
-  // 设置问候语
-  useEffect(() => {
-    const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) {
-      setGreeting('早上好');
-    } else if (hour >= 12 && hour < 18) {
-      setGreeting('下午好');
-    } else {
-      setGreeting('晚上好');
+      return '早上好'
     }
-  }, []);
 
-  // 🌟 从 Clerk 的 user 对象中智能提取名称
+    if (hour >= 12 && hour < 18) {
+      return '下午好'
+    }
+
+    return '晚上好'
+  }, [])
+
+  const filteredNotes = useMemo(() => {
+    if (selectedTags.length === 0) {
+      return notes
+    }
+
+    return notes.filter(
+      (note) => note.tags && selectedTags.every((tag) => note.tags.includes(tag))
+    )
+  }, [notes, selectedTags])
+
+  const notesGridKey = useMemo(
+    () => filteredNotes.map((note) => note.id).join('|'),
+    [filteredNotes]
+  )
+
   const getDisplayName = () => {
-    if (!user) return '';
-    return user.fullName || user.username || user.primaryEmailAddress?.emailAddress.split('@')[0] || '探索者';
+    if (!user) return ''
+
+    return (
+      user.fullName ||
+      user.username ||
+      user.primaryEmailAddress?.emailAddress.split('@')[0] ||
+      '探索者'
+    )
   }
 
-  // 筛选后的笔记
-  const filteredNotes = selectedTags.length === 0
-    ? notes
-    : notes.filter(note => 
-        note.tags && selectedTags.every(tag => note.tags.includes(tag))
-      )
-
-  // 切换标签选择
   const toggleTagSelection = (tag: string) => {
-    setSelectedTags(prev => {
-      if (prev.includes(tag)) return prev.filter(t => t !== tag)
+    setSelectedTags((prev) => {
+      if (prev.includes(tag)) {
+        return prev.filter((item) => item !== tag)
+      }
+
       return [...prev, tag]
     })
   }
 
-  // 清除所有选中标签
   const clearSelectedTags = () => setSelectedTags([])
 
-  // UI 加载状态
-  if (!isLoaded || notesLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-48px)]">
-        <div className="text-xl text-muted-foreground">加载中...</div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-48px)]">
-        <div className="text-xl text-destructive">{error}</div>
-      </div>
-    )
-  }
-
   const toggleNoteSelection = (noteId: string) => {
-    setSelectedNotes(prev => {
-      if (prev.includes(noteId)) return prev.filter(id => id !== noteId)
+    setSelectedNotes((prev) => {
+      if (prev.includes(noteId)) {
+        return prev.filter((id) => id !== noteId)
+      }
+
       return [...prev, noteId]
     })
   }
@@ -90,11 +94,12 @@ const Dashboard = (props: Props) => {
 
     try {
       await deleteNotes(selectedNotes)
-      toast.success(`成功删除 ${selectedNotes.length} 个笔记`)
+      toast.success(`成功删除 ${selectedNotes.length} 条笔记`)
       setSelectedNotes([])
       setIsEditMode(false)
-    } catch (error: any) {
-      toast.error('删除失败: ' + error.message)
+    } catch (deleteError: unknown) {
+      const message = deleteError instanceof Error ? deleteError.message : '未知错误'
+      toast.error('删除失败: ' + message)
     }
   }
 
@@ -103,114 +108,96 @@ const Dashboard = (props: Props) => {
     setSelectedNotes([])
   }
 
+  if (error) {
+    return (
+      <div className="flex min-h-[calc(100vh-48px)] items-center justify-center">
+        <div className="text-xl text-destructive">{error}</div>
+      </div>
+    )
+  }
+
+  const showLoadingState = !isLoaded || notesLoading
+
   return (
-    <div className="p-6 h-full bg-background">
-      <div className="mb-6 flex-col justify-between items-center">
+    <div className="h-full bg-background p-6">
+      <div className="mx-auto mb-6 flex max-w-5xl flex-col items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">
-            {greeting}，{getDisplayName()}
+            {greeting ? `${greeting}，${getDisplayName()}` : getDisplayName()}
           </h1>
-          <p className="text-muted-foreground mt-1">这是您的所有笔记</p>
-        </div>
-        
-        {/* 标签筛选 */}
-        <div className="mt-4">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-sm font-medium">标签筛选:</span>
-            {selectedTags.length > 0 && (
-              <Button 
-                variant="ghost"
-                size="sm"
-                onClick={clearSelectedTags}
-                className="h-7 px-2"
-              >
-                清除筛选
-              </Button>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {allTags.length > 0 ? (
-              allTags.map(tag => (
-                <button
-                  key={tag}
-                  onClick={() => toggleTagSelection(tag)}
-                  className={cn(
-                    'px-3 py-1 text-sm rounded-full transition-all duration-200',
-                    selectedTags.includes(tag)
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                  )}
-                >
-                  {tag}
-                </button>
-              ))
-            ) : (
-              <span className="text-sm text-muted-foreground">暂无标签</span>
-            )}
-          </div>
+          <p className="mt-1 text-muted-foreground">这是您的所有笔记</p>
         </div>
 
-        {/* 编辑模式按钮 */}
+        <TagFilterPanel
+          className="mt-4"
+          tags={allTags}
+          selectedTags={selectedTags}
+          onToggleTag={toggleTagSelection}
+          onClear={clearSelectedTags}
+        />
+
         {isEditMode ? (
-          <div className="flex gap-2">
-            <Button 
-              variant="outline"
-              onClick={exitEditMode}
-              className="flex items-center gap-2 mt-5"
-            >
+          <div className="mt-5 flex gap-2">
+            <Button variant="outline" onClick={exitEditMode} className="flex items-center gap-2">
               <X className="h-4 w-4" />
               取消
             </Button>
-            <Button 
+            <Button
               variant="destructive"
               onClick={handleDeleteSelected}
               disabled={selectedNotes.length === 0}
-              className="flex items-center gap-2 mt-5"
+              className="flex items-center gap-2"
             >
               <Trash2 className="h-4 w-4" />
               删除 ({selectedNotes.length})
             </Button>
           </div>
         ) : (
-          <Button 
+          <Button
             variant="outline"
             onClick={() => setIsEditMode(true)}
-            className="flex items-center gap-2 mt-5"
+            className="mt-5 flex items-center gap-2"
           >
             <Edit className="h-4 w-4" />
             编辑笔记
           </Button>
         )}
       </div>
-      
-      {filteredNotes.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filteredNotes.map(note => (
-            <NoteCard 
-              key={note.id} 
-              note={note} 
-              isSelected={isEditMode && selectedNotes.includes(note.id)}
-              onSelect={toggleNoteSelection}
-              isEditMode={isEditMode}
+
+      {showLoadingState ? (
+        <div className={cn('mx-auto max-w-7xl', DASHBOARD_NOTE_GRID_CLASSNAME)}>
+          {Array.from({ length: SKELETON_COUNT }).map((_, index) => (
+            <NoteCardSkeleton
+              key={`dashboard-note-skeleton-${index}`}
+              className={DASHBOARD_NOTE_CARD_CLASSNAME}
             />
           ))}
         </div>
+      ) : filteredNotes.length > 0 ? (
+        <div className="mx-auto max-w-7xl">
+          <LazyNoteGrid
+            key={notesGridKey}
+            notes={filteredNotes}
+            isEditMode={isEditMode}
+            selectedNotes={selectedNotes}
+            onSelect={toggleNoteSelection}
+          />
+        </div>
       ) : (
-        <div className="flex flex-col items-center justify-center p-12 bg-muted rounded-lg border border-dashed border-border">
-          <div className="text-xl text-muted-foreground mb-4">
+        <div className="mx-auto flex max-w-5xl flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted p-12">
+          <div className="mb-4 text-xl text-muted-foreground">
             {selectedTags.length > 0 ? '没有匹配筛选条件的笔记' : '暂无笔记'}
           </div>
           {selectedTags.length > 0 ? (
-            <Button 
-              variant="outline"
-              onClick={clearSelectedTags}
-              className="mt-2"
-            >
+            <Button variant="outline" onClick={clearSelectedTags} className="mt-2">
               清除筛选
             </Button>
           ) : (
-            <a href="/editor" className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
-              创建第一个笔记
+            <a
+              href="/editor"
+              className="rounded-lg bg-primary px-4 py-2 text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              创建第一条笔记
             </a>
           )}
         </div>
