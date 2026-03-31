@@ -15,7 +15,8 @@ import { useUser } from '@clerk/nextjs';
 import { toast } from 'sonner';
 import { Save, Cloud, Trash2, Eraser, Sparkles, X, Database } from 'lucide-react';
 import type { MyValue } from '@/components/plate-types';
-import { useSidebar } from '@/components/ui/sidebar';
+import { clearEditorDraft, readEditorDraft, writeEditorDraft } from '@/lib/editor-draft';
+import { EditorDraft } from '@/types/editor-draft';
 
 // AI imports
 import { AIToolbar } from '@/components/ai-toolbar';
@@ -28,7 +29,6 @@ export function PlateEditor({ note }: Props) {
   const { user, isLoaded } = useUser();
   const authLoading = !isLoaded;
   const { createNote, updateNote, deleteNotes, notes, getAllTags } = useNotes();
-  const { state } = useSidebar();
   
   const [saving, setSaving] = React.useState(false);
   const [lastSaved, setLastSaved] = React.useState<Date | null>(null);
@@ -51,11 +51,6 @@ export function PlateEditor({ note }: Props) {
     setActiveNoteId(note?.id ?? null);
   }, [note?.id]);
 
-  // 获取 Storage Key
-  const getLocalStorageKey = React.useCallback(() => {
-    return note ? `note_draft_${note.id}` : 'new_note_draft';
-  }, [note]);
-
   // 获取所有可用标签
   React.useEffect(() => {
     setAllTags(getAllTags());
@@ -63,12 +58,26 @@ export function PlateEditor({ note }: Props) {
 
   // 从 note 对象初始化标签
   React.useEffect(() => {
-    if (note && note.tags) {
-      setTags(note.tags);
-    } else {
-      setTags([]);
+    const noteTags = note?.tags;
+    const draft = readEditorDraft();
+    const targetNoteId = note?.id ?? null;
+    const isMatchedDraft =
+      !!draft &&
+      draft.userId === (user?.id ?? null) &&
+      draft.noteId === targetNoteId;
+
+    if (isMatchedDraft && Array.isArray(draft.tags)) {
+      setTags(draft.tags);
+      return;
     }
-  }, [note]);
+
+    if (noteTags) {
+      setTags(noteTags);
+      return;
+    }
+
+    setTags([]);
+  }, [note?.id, note?.tags, user?.id]);
 
   // 监听线/离线状态
   React.useEffect(() => {
@@ -81,6 +90,21 @@ export function PlateEditor({ note }: Props) {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
+  }, []);
+
+  React.useEffect(() => {
+    const legacyKeys: string[] = [];
+
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+
+      if (key === 'new_note_draft' || key.startsWith('note_draft_')) {
+        legacyKeys.push(key);
+      }
+    }
+
+    legacyKeys.forEach((key) => localStorage.removeItem(key));
   }, []);
 
   // 点击外部关闭标签下拉菜单
@@ -96,20 +120,17 @@ export function PlateEditor({ note }: Props) {
 
   // 将内容转为 Editor Value
   const getEditorValue = () => {
-    // 1. 先尝试从 LocalStorage 恢复草稿
-    if (typeof window !== 'undefined') {
-      const draft = localStorage.getItem(getLocalStorageKey());
-      if (draft) {
-        try {
-          const parsed = JSON.parse(draft);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            console.log('已从本地缓存恢复草稿');
-            return normalizeNodeId(parsed);
-          }
-        } catch (e) {
-          console.error('Failed to parse local draft', e);
-        }
-      }
+    // 1. 先尝试从 LocalStorage 恢复单草稿
+    const draft: EditorDraft | null = readEditorDraft();
+    const targetNoteId = note?.id ?? null;
+    const isMatchedDraft =
+      !!draft &&
+      draft.userId === (user?.id ?? null) &&
+      draft.noteId === targetNoteId &&
+      Array.isArray(draft.content);
+
+    if (isMatchedDraft && draft.content.length > 0) {
+      return normalizeNodeId(draft.content);
     }
 
     // 2. 如果没有草稿，且没有 note（新建），返回默认值
@@ -126,7 +147,7 @@ export function PlateEditor({ note }: Props) {
       if (Array.isArray(parsedContent)) {
         return normalizeNodeId(parsedContent);
       }
-    } catch (e) {
+    } catch {
       // 纯文本兼容
     }
     
@@ -146,18 +167,37 @@ export function PlateEditor({ note }: Props) {
     setUserActivityTime(Date.now());
   };
 
+  const persistCurrentDraft = React.useCallback(
+    (overrideContent?: unknown) => {
+      if (!editor) return;
+
+      writeEditorDraft({
+        userId: user?.id ?? null,
+        noteId: activeNoteId,
+        content: overrideContent ?? editor.children,
+        tags,
+        updatedAt: new Date().toISOString(),
+      });
+    },
+    [activeNoteId, editor, tags, user?.id]
+  );
+
   // 原生自动保存到 LocalStorage
   React.useEffect(() => {
-    if (!editor || !editor.children) return;
+    if (!editor?.children) return;
 
-    const saveToLocal = () => {
-      const value = editor.children;
-      localStorage.setItem(getLocalStorageKey(), JSON.stringify(value));
+    const debounceTimer = setTimeout(() => persistCurrentDraft(), 500);
+    return () => clearTimeout(debounceTimer);
+  }, [editor, editor?.children, persistCurrentDraft]);
+
+  React.useEffect(() => {
+    const handleFlushDraft = () => {
+      persistCurrentDraft();
     };
 
-    const debounceTimer = setTimeout(saveToLocal, 500);
-    return () => clearTimeout(debounceTimer);
-  }, [editor?.children, getLocalStorageKey]);
+    window.addEventListener('editor:flush-draft', handleFlushDraft);
+    return () => window.removeEventListener('editor:flush-draft', handleFlushDraft);
+  }, [persistCurrentDraft]);
 
   // 添加/删除标签
   const addTag = () => {
@@ -250,9 +290,14 @@ export function PlateEditor({ note }: Props) {
       } else {
         const createdNote = await createNote(title, content, tags);
         setActiveNoteId(createdNote.id);
+        writeEditorDraft({
+          userId: user.id,
+          noteId: createdNote.id,
+          content: editor?.children ?? [],
+          tags,
+          updatedAt: new Date().toISOString(),
+        });
         if (isManualSave) toast.success('笔记已保存');
-        // 保存后清理本地“新建草稿”缓存
-        localStorage.removeItem('new_note_draft');
       }
 
       setLastSaved(new Date());
@@ -328,7 +373,12 @@ export function PlateEditor({ note }: Props) {
     if (!note?.id) return;
     try {
       await deleteNotes([note.id]);
-      localStorage.removeItem(getLocalStorageKey()); // 删掉本地草稿
+
+      const draft = readEditorDraft();
+      if (draft?.noteId === note.id && draft.userId === (user?.id ?? null)) {
+        clearEditorDraft();
+      }
+
       toast.success('笔记已删除');
       window.location.href = '/dashboard';
     } catch (error: any) {
@@ -343,7 +393,7 @@ export function PlateEditor({ note }: Props) {
     if (!editor) return;
     const emptyContent = normalizeNodeId([{ type: 'h1', children: [{ text: '' }] }]);
     editor.children = emptyContent;
-    localStorage.setItem(getLocalStorageKey(), JSON.stringify(emptyContent));
+    persistCurrentDraft(emptyContent);
     
     toast.success('文档已清空');
     setShowClearDialog(false);

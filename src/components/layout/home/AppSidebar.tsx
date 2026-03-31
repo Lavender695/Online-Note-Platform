@@ -2,12 +2,11 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { 
   Home, 
   Search, 
   Settings, 
-  FileText, 
   PlusCircle, 
   Star 
 } from 'lucide-react';
@@ -23,6 +22,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { useUser } from '@clerk/nextjs';
+import { clearEditorDraft, extractTitleFromDraftContent, readEditorDraft } from '@/lib/editor-draft';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 import UserAvatar from '@/components/layout/home/header/avatar/Avatar';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -35,6 +38,105 @@ const items = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user } = useUser();
+  const [showDraftDialog, setShowDraftDialog] = React.useState(false);
+
+  const toUserStorageKey = (userId: string) => `notes_${userId}`;
+
+  const saveDraftToUserNotes = () => {
+    const draft = readEditorDraft();
+    if (!draft || !Array.isArray(draft.content) || !user?.id) {
+      clearEditorDraft();
+      return;
+    }
+
+    if (draft.userId !== user.id) {
+      clearEditorDraft();
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const storageKey = toUserStorageKey(user.id);
+    const raw = localStorage.getItem(storageKey);
+    let existingNotes: Array<Record<string, unknown>> = [];
+
+    if (raw) {
+      try {
+        existingNotes = JSON.parse(raw) as Array<Record<string, unknown>>;
+      } catch {
+        existingNotes = [];
+      }
+    }
+
+    const targetId = draft.noteId ?? crypto.randomUUID();
+    const title = extractTitleFromDraftContent(draft.content);
+    const noteIndex = existingNotes.findIndex((item) => item.id === targetId);
+
+    if (noteIndex >= 0) {
+      const prev = existingNotes[noteIndex];
+      existingNotes[noteIndex] = {
+        ...prev,
+        id: targetId,
+        user_id: user.id,
+        title,
+        content: JSON.stringify(draft.content),
+        tags: Array.isArray(draft.tags) ? draft.tags : [],
+        updated_at: now,
+      };
+    } else {
+      existingNotes.unshift({
+        id: targetId,
+        user_id: user.id,
+        title,
+        content: JSON.stringify(draft.content),
+        tags: Array.isArray(draft.tags) ? draft.tags : [],
+        created_at: now,
+        updated_at: now,
+      });
+    }
+
+    existingNotes.sort((a, b) => {
+      const aTime = new Date(String(a.updated_at ?? a.created_at ?? 0)).getTime();
+      const bTime = new Date(String(b.updated_at ?? b.created_at ?? 0)).getTime();
+      return bTime - aTime;
+    });
+
+    localStorage.setItem(storageKey, JSON.stringify(existingNotes));
+    clearEditorDraft();
+  };
+
+  const handleNewNoteClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    window.dispatchEvent(new Event('editor:flush-draft'));
+
+    const draft = readEditorDraft();
+    const hasDraft =
+      !!draft &&
+      Array.isArray(draft.content) &&
+      draft.content.length > 0 &&
+      draft.userId === (user?.id ?? null);
+
+    if (!hasDraft) {
+      clearEditorDraft();
+      router.push('/editor');
+      return;
+    }
+
+    setShowDraftDialog(true);
+  };
+
+  const handleSaveAndCreate = () => {
+    saveDraftToUserNotes();
+    setShowDraftDialog(false);
+    router.push('/editor');
+  };
+
+  const handleDiscardAndCreate = () => {
+    clearEditorDraft();
+    setShowDraftDialog(false);
+    router.push('/editor');
+  };
 
   return (
     <Sidebar variant="inset">
@@ -79,7 +181,7 @@ export function AppSidebar() {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="新建笔记">
-                  <Link href="/editor">
+                  <Link href="/editor" onClick={handleNewNoteClick}>
                     <PlusCircle />
                     <span>新建笔记</span>
                   </Link>
@@ -99,6 +201,28 @@ export function AppSidebar() {
           <ThemeToggle />
         </div>
       </SidebarFooter>
+
+      <Dialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>检测到正在编辑的草稿</DialogTitle>
+            <DialogDescription>
+              你正在编辑的内容尚未处理。新建笔记前，选择保存当前编辑或直接丢弃。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowDraftDialog(false)}>
+              取消
+            </Button>
+            <Button variant="outline" onClick={handleDiscardAndCreate}>
+              丢弃并新建
+            </Button>
+            <Button onClick={handleSaveAndCreate}>
+              保存并新建
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Sidebar>
   );
 }
