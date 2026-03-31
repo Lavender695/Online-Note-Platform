@@ -27,7 +27,7 @@ import { clearEditorDraft, extractTitleFromDraftContent, readEditorDraft } from 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
-import UserAvatar from '@/components/layout/home/header/avatar/Avatar';
+import UserAvatar from '@/components/layout/home/avatar/Avatar';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 const items = [
