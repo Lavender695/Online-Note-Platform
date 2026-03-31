@@ -15,7 +15,7 @@ import { useUser } from '@clerk/nextjs';
 import { toast } from 'sonner';
 import { Save, Cloud, Trash2, Eraser, Sparkles, X, Database } from 'lucide-react';
 import type { MyValue } from '@/components/plate-types';
-import { clearEditorDraft, readEditorDraft, writeEditorDraft } from '@/lib/editor-draft';
+import { clearEditorDraft, readEditorDraft } from '@/lib/editor-draft';
 import { EditorDraft } from '@/types/editor-draft';
 
 // AI imports
@@ -167,38 +167,6 @@ export function PlateEditor({ note }: Props) {
     setUserActivityTime(Date.now());
   };
 
-  const persistCurrentDraft = React.useCallback(
-    (overrideContent?: unknown) => {
-      if (!editor) return;
-
-      writeEditorDraft({
-        userId: user?.id ?? null,
-        noteId: activeNoteId,
-        content: overrideContent ?? editor.children,
-        tags,
-        updatedAt: new Date().toISOString(),
-      });
-    },
-    [activeNoteId, editor, tags, user?.id]
-  );
-
-  // 原生自动保存到 LocalStorage
-  React.useEffect(() => {
-    if (!editor?.children) return;
-
-    const debounceTimer = setTimeout(() => persistCurrentDraft(), 500);
-    return () => clearTimeout(debounceTimer);
-  }, [editor, editor?.children, persistCurrentDraft]);
-
-  React.useEffect(() => {
-    const handleFlushDraft = () => {
-      persistCurrentDraft();
-    };
-
-    window.addEventListener('editor:flush-draft', handleFlushDraft);
-    return () => window.removeEventListener('editor:flush-draft', handleFlushDraft);
-  }, [persistCurrentDraft]);
-
   // 添加/删除标签
   const addTag = () => {
     if (tagInput.trim() && !tags.includes(tagInput.trim())) {
@@ -290,13 +258,6 @@ export function PlateEditor({ note }: Props) {
       } else {
         const createdNote = await createNote(title, content, tags);
         setActiveNoteId(createdNote.id);
-        writeEditorDraft({
-          userId: user.id,
-          noteId: createdNote.id,
-          content: editor?.children ?? [],
-          tags,
-          updatedAt: new Date().toISOString(),
-        });
         if (isManualSave) toast.success('笔记已保存');
       }
 
@@ -393,7 +354,6 @@ export function PlateEditor({ note }: Props) {
     if (!editor) return;
     const emptyContent = normalizeNodeId([{ type: 'h1', children: [{ text: '' }] }]);
     editor.children = emptyContent;
-    persistCurrentDraft(emptyContent);
     
     toast.success('文档已清空');
     setShowClearDialog(false);
