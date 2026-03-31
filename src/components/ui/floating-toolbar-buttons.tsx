@@ -8,12 +8,9 @@ import {
   ItalicIcon,
   StrikethroughIcon,
   UnderlineIcon,
-  WandSparklesIcon,
 } from 'lucide-react';
 import { KEYS } from 'platejs';
 import { useEditorReadOnly } from 'platejs/react';
-
-import { AIToolbarButton } from './ai-toolbar-button';
 
 import { InlineEquationToolbarButton } from './equation-toolbar-button';
 import { LinkToolbarButton } from './link-toolbar-button';
