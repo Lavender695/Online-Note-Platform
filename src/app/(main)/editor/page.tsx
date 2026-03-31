@@ -2,8 +2,10 @@
 import { useSearchParams } from 'next/navigation';
 import { PlateEditor } from '@/components/plate-editor';
 import { useNotes } from '@/hooks/use-notes';
+import { Suspense } from "react";
+import EditorPageSkeleton from '@/components/layout/editor/EditorPageSkeleton';
 
-export default function EditorPage() {
+function EditorContent() {
   const searchParams = useSearchParams();
   const noteId = searchParams.get('id');
   const { notes, loading, error } = useNotes();
@@ -12,7 +14,7 @@ export default function EditorPage() {
   const note = noteId ? notes.find(note => note.id === noteId) : undefined;
 
   if (loading) {
-    return null;
+    return <EditorPageSkeleton />;
   }
 
   if (error) {
@@ -20,4 +22,12 @@ export default function EditorPage() {
   }
 
   return <PlateEditor key={noteId ?? 'new-note'} note={note} />;
+}
+
+export default function EditorPage() {
+  return (
+    <Suspense fallback={<EditorPageSkeleton />}>
+      <EditorContent />
+    </Suspense>
+  );
 }
