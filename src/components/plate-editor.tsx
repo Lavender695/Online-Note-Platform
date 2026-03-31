@@ -402,11 +402,10 @@ export function PlateEditor({ note }: Props) {
   return (
     <Plate editor={editor} onChange={handleUserActivity}>
       {/* 标签输入区域 */}
-      <div className={`border-b border-border px-8 py-3 z-50 bg-background fixed top-0 w-[calc(100vw-16rem)]`}>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
+      <div className="fixed left-0 right-0 top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 md:left-(--sidebar-width)">
+        <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap px-3 py-2 sm:px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {/* 标签输入和下拉菜单 */}
-            <div className="relative" ref={tagDropdownRef}>
+            <div className="relative shrink-0" ref={tagDropdownRef}>
               <button
                 onClick={() => setShowTagDropdown(!showTagDropdown)}
                 className="flex items-center gap-1 px-3 py-1 border border-input rounded-full text-sm hover:bg-background/80 focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
@@ -418,7 +417,7 @@ export function PlateEditor({ note }: Props) {
               </button>
               
               {showTagDropdown && (
-                <div className="absolute z-50 mt-1 w-64 bg-background border border-input rounded-md shadow-lg overflow-hidden">
+                <div className="absolute left-0 z-50 mt-1 w-64 max-w-[calc(100vw-1.5rem)] bg-background border border-input rounded-md shadow-lg overflow-hidden">
                   <input
                     type="text"
                     value={tagInput}
@@ -489,15 +488,13 @@ export function PlateEditor({ note }: Props) {
                 </div>
               )}
             </div>
-          </div>
-          
-          <div className="flex gap-2">
+
             {/* AI 按钮移到顶部 */}
             <Button 
               onClick={() => setShowAIToolbar(!showAIToolbar)} 
               variant={showAIToolbar ? "default" : "secondary"} 
               size="sm" 
-              className="flex items-center gap-2 cursor-pointer"
+              className="shrink-0 flex items-center gap-2 cursor-pointer"
               aria-label="AI 助手"
             >
               <Sparkles className="h-3 w-3" />
@@ -506,7 +503,7 @@ export function PlateEditor({ note }: Props) {
 
             <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
               <DialogTrigger asChild>
-                <Button variant="secondary" size="sm" className="flex items-center gap-2 cursor-pointer">
+                <Button variant="secondary" size="sm" className="shrink-0 flex items-center gap-2 cursor-pointer">
                   <Eraser className="h-3 w-3" />
                 </Button>
               </DialogTrigger>
@@ -525,7 +522,7 @@ export function PlateEditor({ note }: Props) {
             {note && (
               <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <DialogTrigger asChild>
-                  <Button variant="destructive" size="sm" className="flex items-center gap-2 cursor-pointer">
+                  <Button variant="destructive" size="sm" className="shrink-0 flex items-center gap-2 cursor-pointer">
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </DialogTrigger>
@@ -547,7 +544,7 @@ export function PlateEditor({ note }: Props) {
               disabled={saving}
               variant="default"
               size="sm"
-              className="flex items-center gap-2 bg-primary hover:bg-primary/90 cursor-pointer"
+              className="shrink-0 flex items-center gap-2 bg-primary hover:bg-primary/90 cursor-pointer"
             >
               {saving ? (
                 <><Cloud className="h-3 w-3 animate-spin" />保存中...</>
@@ -555,7 +552,6 @@ export function PlateEditor({ note }: Props) {
                 <><Save className="h-3 w-3" />{isOffline ? '存为草稿' : '保存笔记'}</>
               )}
             </Button>
-          </div>
         </div>
       </div>
 
@@ -563,14 +559,14 @@ export function PlateEditor({ note }: Props) {
         <Editor className="min-h-[500px] min-w-[70vw] w-full max-w-full overflow-x-hidden overflow-y-auto whitespace-pre-wrap wrap-break-word rounded-b-lg bg-background text-sm" />
         
         {lastSaved && (
-          <div className="fixed top-25 right-4 z-10 text-xs text-muted-foreground whitespace-nowrap pointer-events-none">
+          <div className="fixed right-3 top-24 z-10 text-xs text-muted-foreground whitespace-nowrap pointer-events-none sm:right-4 md:top-24">
             自动保存于: {lastSaved.toLocaleTimeString()}
           </div>
         )}
         
         {/* AI 面板弹出位置调整，放在右上角贴近工具栏 */}
         {showAIToolbar && (
-          <div className="fixed top-16 right-4 z-[100] bg-background/95 backdrop-blur-sm border rounded-lg shadow-xl p-4 w-[calc(100vw-2rem)] sm:w-80">
+          <div className="fixed left-2 right-2 top-20 z-100 w-auto rounded-lg border bg-background/95 p-4 shadow-xl backdrop-blur-sm sm:left-auto sm:right-4 sm:top-16 sm:w-80">
             <div className="flex justify-end mb-2">
               <Button onClick={() => setShowAIToolbar(false)} variant="ghost" size="icon" className="h-6 w-6 cursor-pointer">
                 <X className="h-4 w-4" />
