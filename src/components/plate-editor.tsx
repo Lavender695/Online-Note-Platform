@@ -1,6 +1,9 @@
 'use client';
 
 import * as React from 'react';
+import * as Y from 'yjs';
+import { IndexeddbPersistence } from 'y-indexeddb';
+import { withYjs, YjsEditor } from '@slate-yjs/core';
 
 import { normalizeNodeId } from 'platejs';
 import { Plate, usePlateEditor } from 'platejs/react';
@@ -11,12 +14,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Note } from '@/types/note';
 import { useNotes } from '@/hooks/use-notes';
-import { useUser } from '@clerk/nextjs';
 import { toast } from 'sonner';
 import { Save, Cloud, Trash2, Eraser, Sparkles, X, Database } from 'lucide-react';
-import type { MyValue } from '@/components/plate-types';
-import { clearEditorDraft, readEditorDraft } from '@/lib/editor-draft';
-import { EditorDraft } from '@/types/editor-draft';
 
 // AI imports
 import { AIToolbar } from '@/components/ai-toolbar';
@@ -26,30 +25,25 @@ type Props = {
 };
 
 export function PlateEditor({ note }: Props) {
-  const { user, isLoaded } = useUser();
-  const authLoading = !isLoaded;
-  const { createNote, updateNote, deleteNotes, notes, getAllTags } = useNotes();
+  const { deleteNotes, notes, getAllTags } = useNotes();
   
-  const [saving, setSaving] = React.useState(false);
+  const [saving] = React.useState(false);
   const [lastSaved, setLastSaved] = React.useState<Date | null>(null);
-  const [userActivityTime, setUserActivityTime] = React.useState(Date.now());
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [showClearDialog, setShowClearDialog] = React.useState(false);
-  const [activeNoteId, setActiveNoteId] = React.useState<string | null>(note?.id ?? null);
   
   // 原生离线状态检测
   const [isOffline, setIsOffline] = React.useState(typeof navigator !== 'undefined' ? !navigator.onLine : false);
+
+  const [yDoc] = React.useState(() => new Y.Doc());
   
   const [tagInput, setTagInput] = React.useState('');
   const [tags, setTags] = React.useState<string[]>([]);
   const [showAIToolbar, setShowAIToolbar] = React.useState(false);
   const [showTagDropdown, setShowTagDropdown] = React.useState(false);
   const [allTags, setAllTags] = React.useState<string[]>([]);
+  const [yjsReady, setYjsReady] = React.useState(false);
   const tagDropdownRef = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    setActiveNoteId(note?.id ?? null);
-  }, [note?.id]);
 
   // 获取所有可用标签
   React.useEffect(() => {
@@ -59,17 +53,6 @@ export function PlateEditor({ note }: Props) {
   // 从 note 对象初始化标签
   React.useEffect(() => {
     const noteTags = note?.tags;
-    const draft = readEditorDraft();
-    const targetNoteId = note?.id ?? null;
-    const isMatchedDraft =
-      !!draft &&
-      draft.userId === (user?.id ?? null) &&
-      draft.noteId === targetNoteId;
-
-    if (isMatchedDraft && Array.isArray(draft.tags)) {
-      setTags(draft.tags);
-      return;
-    }
 
     if (noteTags) {
       setTags(noteTags);
@@ -77,7 +60,7 @@ export function PlateEditor({ note }: Props) {
     }
 
     setTags([]);
-  }, [note?.id, note?.tags, user?.id]);
+  }, [note?.id, note?.tags]);
 
   // 监听线/离线状态
   React.useEffect(() => {
@@ -90,21 +73,6 @@ export function PlateEditor({ note }: Props) {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
-
-  React.useEffect(() => {
-    const legacyKeys: string[] = [];
-
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i);
-      if (!key) continue;
-
-      if (key === 'new_note_draft' || key.startsWith('note_draft_')) {
-        legacyKeys.push(key);
-      }
-    }
-
-    legacyKeys.forEach((key) => localStorage.removeItem(key));
   }, []);
 
   // 点击外部关闭标签下拉菜单
@@ -123,20 +91,7 @@ export function PlateEditor({ note }: Props) {
     const safeTitle = typeof note?.title === 'string' && note.title.trim() ? note.title : '无标题';
     const safeContent = typeof note?.content === 'string' ? note.content : '';
 
-    // 1. 先尝试从 LocalStorage 恢复单草稿
-    const draft: EditorDraft | null = readEditorDraft();
-    const targetNoteId = note?.id ?? null;
-    const isMatchedDraft =
-      !!draft &&
-      draft.userId === (user?.id ?? null) &&
-      draft.noteId === targetNoteId &&
-      Array.isArray(draft.content);
-
-    if (isMatchedDraft && draft.content.length > 0) {
-      return normalizeNodeId(draft.content);
-    }
-
-    // 2. 如果没有草稿，且没有 note（新建），返回默认值
+    // 如果没有 note（新建），返回默认值
     if (!note) {
       return normalizeNodeId([
         { children: [{ text: '新笔记' }], type: 'h1' },
@@ -144,7 +99,7 @@ export function PlateEditor({ note }: Props) {
       ]);
     }
     
-    // 3. 如果有 note，解析 note 的内容
+    // 如果有 note，解析 note 的内容
     try {
       const parsedContent = JSON.parse(safeContent);
       if (Array.isArray(parsedContent)) {
@@ -160,14 +115,51 @@ export function PlateEditor({ note }: Props) {
     ]);
   };
 
+  const sharedType = React.useMemo(() => yDoc.get('content', Y.XmlText), [yDoc]);
+
   const editor = usePlateEditor({
     plugins: EditorKit,
     value: getEditorValue(),
-  });
+    enabled: yjsReady,
+    // Plate v51 typing and slate-yjs typing are not fully aligned; keep runtime binding.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    extendEditor: (({ editor }: any) => withYjs(editor as any, sharedType as any) as any) as any,
+  }, [sharedType, note?.id, yjsReady]);
 
-  // Handle user input to reset debounce timer
+  React.useEffect(() => {
+    setYjsReady(false);
+    const noteKey = note?.id ? `note:${note.id}` : 'note:new';
+    const persistence = new IndexeddbPersistence(noteKey, yDoc);
+
+    const handleSynced = () => {
+      setYjsReady(true);
+      setLastSaved(new Date());
+    };
+    persistence.once('synced', handleSynced);
+
+    return () => {
+      persistence.off('synced', handleSynced);
+      persistence.destroy();
+    };
+  }, [note?.id, yDoc]);
+
+  React.useEffect(() => {
+    if (!editor || !yjsReady) return;
+
+    // withYjs defaults to autoConnect=false, so we connect manually.
+    if (YjsEditor.isYjsEditor(editor) && !YjsEditor.connected(editor)) {
+      YjsEditor.connect(editor);
+    }
+
+    return () => {
+      if (YjsEditor.isYjsEditor(editor) && YjsEditor.connected(editor)) {
+        YjsEditor.disconnect(editor);
+      }
+    };
+  }, [editor, yjsReady]);
+
   const handleUserActivity = () => {
-    setUserActivityTime(Date.now());
+    setLastSaved(new Date());
   };
 
   // 添加/删除标签
@@ -176,14 +168,12 @@ export function PlateEditor({ note }: Props) {
       setTags([...tags, tagInput.trim()]);
       setTagInput('');
       handleUserActivity();
-      saveNote(false);
     }
   };
 
   const removeTag = (tagToRemove: string) => {
     setTags(tags.filter(tag => tag !== tagToRemove));
     handleUserActivity();
-    saveNote(false);
   };
 
   const handleTagInputKeyDown = (e: React.KeyboardEvent) => {
@@ -194,15 +184,16 @@ export function PlateEditor({ note }: Props) {
   };
 
   // 辅助函数：递归提取文本内容
-  const getTextContent = (element: any): string => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getTextContent = React.useCallback((element: any): string => {
     if (!element) return '';
     if (Array.isArray(element)) return element.map(getTextContent).join('');
-    if (typeof element === 'object' && 'text' in element) return element.text || '';
+    if (typeof element === 'object' && 'text' in element) return String(element.text ?? '');
     if (typeof element === 'object' && 'children' in element && Array.isArray(element.children)) {
       return element.children.map(getTextContent).join('');
     }
     return '';
-  };
+  }, []);
 
   // 获取当前编辑器文本内容的回调函数 (供AI使用)
   const getCurrentTextContent = React.useCallback((): string => {
@@ -210,114 +201,15 @@ export function PlateEditor({ note }: Props) {
       return getTextContent(editor.children);
     }
     return '';
-  }, [editor]);
+  }, [editor, getTextContent]);
 
-  // 提取标题和内容
-  const extractNoteData = (): { title: string; content: string } => {
-    if (!editor || !editor.children) return { title: '', content: '' };
-    
-    const value = editor.children as MyValue;
-    let title = '无标题笔记';
-    
-    if (value.length > 0) {
-      for (const block of value) {
-        const blockText = getTextContent(block);
-        if (blockText.trim()) {
-          title = blockText.trim();
-          break;
-        }
-      }
+  const handleLocalSaveClick = () => {
+    if (editor && YjsEditor.isYjsEditor(editor)) {
+      YjsEditor.flushLocalChanges(editor);
     }
-
-    const content = JSON.stringify(value);
-    return { title, content };
+    setLastSaved(new Date());
+    toast.success('已保存到本地 IndexedDB');
   };
-
-  // 核心保存逻辑
-  const saveNote = async (isManualSave = false) => {
-    if (!user) {
-      if (isManualSave) toast.error('请先登录');
-      return;
-    }
-
-    if (authLoading) {
-      if (isManualSave) toast.error('认证状态加载中，请稍候');
-      return;
-    }
-
-    if (isManualSave) setSaving(true);
-    
-    try {
-      const { title, content } = extractNoteData();
-
-      if (!title.trim() && !content.trim()) {
-        if (isManualSave) toast.error('笔记内容不能为空');
-        return;
-      }
-
-      if (activeNoteId) {
-        await updateNote(activeNoteId, title, content, tags);
-        if (isManualSave) toast.success('笔记已更新');
-      } else {
-        const createdNote = await createNote(title, content, tags);
-        setActiveNoteId(createdNote.id);
-        if (isManualSave) toast.success('笔记已保存');
-      }
-
-      setLastSaved(new Date());
-    } catch (error: any) {
-      console.error('保存失败:', error);
-      if (isManualSave) {
-        if (isOffline) {
-          toast.info('当前处于离线状态，已保存至本地草稿');
-        } else {
-          toast.error('保存失败: ' + (error.message || '未知错误'));
-        }
-      }
-    } finally {
-      if (isManualSave) setSaving(false);
-    }
-  };
-  
-  // 网络恢复时自动同步
-  React.useEffect(() => {
-    const handleOnlineSync = async () => {
-      if (!isOffline && user && editor && lastSaved) {
-        const timeSinceLastSave = Date.now() - lastSaved.getTime();
-        if (timeSinceLastSave > 1000) {
-          await saveNote(false);
-          toast.success('网络已恢复，草稿已自动同步');
-        }
-      }
-    };
-    
-    window.addEventListener('online', handleOnlineSync);
-    return () => window.removeEventListener('online', handleOnlineSync);
-  }, [isOffline, user, editor, lastSaved]);
-
-  // 定时自动保存
-  React.useEffect(() => {
-    const autoSaveTimer = setTimeout(async () => {
-      const inactivityTime = Date.now() - userActivityTime;
-      if (inactivityTime >= 3000 && (editor?.children || tags.length > 0)) {
-        await saveNote(false);
-      }
-    }, 3000);
-
-    return () => clearTimeout(autoSaveTimer);
-  }, [userActivityTime, editor?.children, tags]);
-
-  // 监���用户活跃度
-  React.useEffect(() => {
-    const handleActivity = () => handleUserActivity();
-    const editorElement = document.querySelector('.slate-editor');
-    
-    if (editorElement) {
-      const events = ['keydown', 'keyup', 'click', 'paste', 'cut', 'delete', 'input'];
-      events.forEach(e => editorElement.addEventListener(e, handleActivity));
-      return () => events.forEach(e => editorElement.removeEventListener(e, handleActivity));
-    }
-  }, []);
 
   // 处理AI结果
   const handleAIResult = (result: string, mode: 'summary' | 'completion' | 'search') => {
@@ -338,15 +230,11 @@ export function PlateEditor({ note }: Props) {
     try {
       await deleteNotes([note.id]);
 
-      const draft = readEditorDraft();
-      if (draft?.noteId === note.id && draft.userId === (user?.id ?? null)) {
-        clearEditorDraft();
-      }
-
       toast.success('笔记已删除');
       window.location.href = '/dashboard';
-    } catch (error: any) {
-      toast.error('删除失败: ' + (error.message || '未知错误'));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : '未知错误';
+      toast.error('删除失败: ' + message);
     } finally {
       setShowDeleteDialog(false);
     }
@@ -361,6 +249,14 @@ export function PlateEditor({ note }: Props) {
     toast.success('文档已清空');
     setShowClearDialog(false);
   };
+
+  if (!editor) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center text-sm text-muted-foreground">
+        正在加载本地笔记...
+      </div>
+    );
+  }
 
   return (
     <Plate editor={editor} onChange={handleUserActivity}>
@@ -416,7 +312,6 @@ export function PlateEditor({ note }: Props) {
                               if (!tags.includes(availableTag)) {
                                 setTags([...tags, availableTag]);
                                 handleUserActivity();
-                                saveNote(false);
                               }
                               setTagInput('');
                               setShowTagDropdown(false);
@@ -503,7 +398,7 @@ export function PlateEditor({ note }: Props) {
             )}
 
             <Button 
-              onClick={() => saveNote(true)}
+              onClick={handleLocalSaveClick}
               disabled={saving}
               variant="default"
               size="sm"
@@ -512,7 +407,7 @@ export function PlateEditor({ note }: Props) {
               {saving ? (
                 <><Cloud className="h-3 w-3 animate-spin" />保存中...</>
               ) : (
-                <><Save className="h-3 w-3" />{isOffline ? '存为草稿' : '保存笔记'}</>
+                <><Save className="h-3 w-3" />保存到本地</>
               )}
             </Button>
         </div>
@@ -523,7 +418,7 @@ export function PlateEditor({ note }: Props) {
         
         {lastSaved && (
           <div className="fixed right-3 top-24 z-10 text-xs text-muted-foreground whitespace-nowrap pointer-events-none sm:right-4 md:top-24">
-            自动保存于: {lastSaved.toLocaleTimeString()}
+            本地保存于: {lastSaved.toLocaleTimeString()}
           </div>
         )}
         
