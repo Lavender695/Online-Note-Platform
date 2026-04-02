@@ -4,6 +4,7 @@ import * as React from 'react';
 import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
 import { withYjs, YjsEditor } from '@slate-yjs/core';
+import { useRouter } from 'next/navigation';
 
 import { normalizeNodeId } from 'platejs';
 import { Plate, usePlateEditor } from 'platejs/react';
@@ -15,19 +16,23 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Note } from '@/types/note';
 import { useNotes } from '@/hooks/use-notes';
 import { toast } from 'sonner';
-import { Save, Cloud, Trash2, Eraser, Sparkles, X, Database } from 'lucide-react';
+import { Save, Cloud, Trash2, Eraser, Sparkles, X, Database, Upload, Download } from 'lucide-react';
 
 // AI imports
 import { AIToolbar } from '@/components/ai-toolbar';
 
 type Props = {
   note?: Note;
+  tempNoteId?: string;
 };
 
-export function PlateEditor({ note }: Props) {
-  const { deleteNotes, notes, getAllTags } = useNotes();
+export function PlateEditor({ note, tempNoteId }: Props) {
+  const { deleteNotes, notes, getAllTags, createNote, updateNote, pushToCloud, pullFromCloud } = useNotes();
+  const router = useRouter();
   
-  const [saving] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [pushingCloud, setPushingCloud] = React.useState(false);
+  const [pullingCloud, setPullingCloud] = React.useState(false);
   const [lastSaved, setLastSaved] = React.useState<Date | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [showClearDialog, setShowClearDialog] = React.useState(false);
@@ -44,6 +49,10 @@ export function PlateEditor({ note }: Props) {
   const [allTags, setAllTags] = React.useState<string[]>([]);
   const [yjsReady, setYjsReady] = React.useState(false);
   const tagDropdownRef = React.useRef<HTMLDivElement>(null);
+  const currentNote = React.useMemo(
+    () => (note?.id ? notes.find((item) => item.id === note.id) ?? note : note),
+    [note, notes]
+  );
 
   // 获取所有可用标签
   React.useEffect(() => {
@@ -52,7 +61,7 @@ export function PlateEditor({ note }: Props) {
 
   // 从 note 对象初始化标签
   React.useEffect(() => {
-    const noteTags = note?.tags;
+    const noteTags = currentNote?.tags;
 
     if (noteTags) {
       setTags(noteTags);
@@ -60,7 +69,7 @@ export function PlateEditor({ note }: Props) {
     }
 
     setTags([]);
-  }, [note?.id, note?.tags]);
+  }, [currentNote?.id, currentNote?.tags]);
 
   // 监听线/离线状态
   React.useEffect(() => {
@@ -128,7 +137,21 @@ export function PlateEditor({ note }: Props) {
 
   React.useEffect(() => {
     setYjsReady(false);
-    const noteKey = note?.id ? `note:${note.id}` : 'note:new';
+    
+    // Clean up yDoc content when note.id changes to avoid stale data
+    // This ensures a fresh start for new notes or different notes
+    if (yDoc) {
+      const sharedContent = yDoc.get('content', Y.XmlText);
+      if (sharedContent && sharedContent.length > 0) {
+        // Use a transaction to batch the delete operation
+        yDoc.transact(() => {
+          sharedContent.delete(0, sharedContent.length);
+        });
+      }
+    }
+    
+    // Use tempNoteId if available (for new note sessions), otherwise use note.id
+    const noteKey = note?.id ? `note:${note.id}` : (tempNoteId ? `${tempNoteId}` : 'note:new');
     const persistence = new IndexeddbPersistence(noteKey, yDoc);
 
     const handleSynced = () => {
@@ -141,7 +164,7 @@ export function PlateEditor({ note }: Props) {
       persistence.off('synced', handleSynced);
       persistence.destroy();
     };
-  }, [note?.id, yDoc]);
+  }, [note?.id, tempNoteId, yDoc]);
 
   React.useEffect(() => {
     if (!editor || !yjsReady) return;
@@ -203,13 +226,100 @@ export function PlateEditor({ note }: Props) {
     return '';
   }, [editor, getTextContent]);
 
-  const handleLocalSaveClick = () => {
-    if (editor && YjsEditor.isYjsEditor(editor)) {
+  const persistLocalMetadata = React.useCallback(async (): Promise<Note | undefined> => {
+    if (!editor) return undefined;
+
+    if (YjsEditor.isYjsEditor(editor)) {
       YjsEditor.flushLocalChanges(editor);
     }
+
+    const children = Array.isArray(editor.children) ? editor.children : [];
+    const content = JSON.stringify(children);
+    const firstBlockText = children
+      .map((node) => getTextContent(node).trim())
+      .find((text) => text.length > 0);
+    const title = firstBlockText || currentNote?.title || '无标题笔记';
+
+    if (currentNote?.id) {
+      const updated = await updateNote(currentNote.id, title, content, tags);
+      setLastSaved(new Date());
+      return updated;
+    }
+
+    const created = await createNote(title, content, tags);
+    // New note gets an ID immediately so dashboard can show it and cloud push can target it.
+    router.replace(`/editor?id=${created.id}`);
+
+    // Clear temporary data after creating note
+    setTags([]);
+    setTagInput('');
+
     setLastSaved(new Date());
-    toast.success('已保存到本地 IndexedDB');
+    return created;
+  }, [createNote, currentNote, editor, getTextContent, router, tags, updateNote]);
+
+  const handleLocalSaveClick = () => {
+    void (async () => {
+      setSaving(true);
+      try {
+        await persistLocalMetadata();
+        toast.success('已保存到本地 IndexedDB');
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : '未知错误';
+        toast.error('本地保存失败: ' + message);
+      } finally {
+        setSaving(false);
+      }
+    })();
   };
+
+  const handlePushToCloud = () => {
+    void (async () => {
+      if (!currentNote?.id) {
+        toast.info('请先创建笔记后再同步到云端');
+        return;
+      }
+
+      setPushingCloud(true);
+      try {
+        const persistedNote = await persistLocalMetadata();
+        const noteIdToPush = persistedNote?.id ?? currentNote?.id;
+
+        if (!noteIdToPush) {
+          throw new Error('保存后仍未获得可同步的笔记 ID');
+        }
+
+        await pushToCloud(noteIdToPush);
+        toast.success('已推送到云端');
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : '未知错误';
+        toast.error('云端推送失败: ' + message);
+      } finally {
+        setPushingCloud(false);
+      }
+    })();
+  };
+
+  const handlePullFromCloud = () => {
+    void (async () => {
+      setPullingCloud(true);
+      try {
+        const merged = await pullFromCloud();
+        toast.success(`已从云端拉取 ${merged.length} 条笔记`);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : '未知错误';
+        toast.error('云端拉取失败: ' + message);
+      } finally {
+        setPullingCloud(false);
+      }
+    })();
+  };
+
+  const syncStateLabel = React.useMemo(() => {
+    if (!currentNote) return '本地新建';
+    if (currentNote.syncState === 'synced') return '云端已同步';
+    return '待同步';
+  }, [currentNote]);
 
   // 处理AI结果
   const handleAIResult = (result: string, mode: 'summary' | 'completion' | 'search') => {
@@ -410,6 +520,38 @@ export function PlateEditor({ note }: Props) {
                 <><Save className="h-3 w-3" />保存到本地</>
               )}
             </Button>
+
+            <Button
+              onClick={handlePushToCloud}
+              disabled={pushingCloud || !currentNote?.id}
+              variant="secondary"
+              size="sm"
+              className="shrink-0 flex items-center gap-2 cursor-pointer"
+            >
+              {pushingCloud ? (
+                <><Cloud className="h-3 w-3 animate-spin" />同步中...</>
+              ) : (
+                <><Upload className="h-3 w-3" />推送云端</>
+              )}
+            </Button>
+
+            <Button
+              onClick={handlePullFromCloud}
+              disabled={pullingCloud}
+              variant="outline"
+              size="sm"
+              className="shrink-0 flex items-center gap-2 cursor-pointer"
+            >
+              {pullingCloud ? (
+                <><Cloud className="h-3 w-3 animate-spin" />拉取中...</>
+              ) : (
+                <><Download className="h-3 w-3" />拉取云端</>
+              )}
+            </Button>
+
+            <span className="shrink-0 rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground">
+              {syncStateLabel}
+            </span>
         </div>
       </div>
 

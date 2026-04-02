@@ -21,6 +21,14 @@ type Props = {
 }
 
 const NoteCard = ({ note, isSelected = false, onSelect, isEditMode = false, className }: Props) => {
+  const syncStateConfig = {
+    local: { label: '仅本地', className: 'bg-slate-100 text-slate-700' },
+    dirty: { label: '待同步', className: 'bg-amber-100 text-amber-700' },
+    synced: { label: '已同步', className: 'bg-emerald-100 text-emerald-700' },
+  } as const
+
+  const syncState = syncStateConfig[note.syncState]
+
   // Format date for display
   const formattedDate = new Date(note.created_at).toLocaleString('zh-CN', {
     year: 'numeric',
@@ -73,9 +81,19 @@ const NoteCard = ({ note, isSelected = false, onSelect, isEditMode = false, clas
           <CardTitle className="text-lg font-semibold text-foreground line-clamp-2">
             {note.title || '无标题笔记'}
           </CardTitle>
-          <CardDescription className="text-xs text-muted-foreground mt-1">
-            {formattedDate}
-          </CardDescription>
+          <div className="mt-1 flex items-center justify-between gap-2">
+            <CardDescription className="text-xs text-muted-foreground">
+              {formattedDate}
+            </CardDescription>
+            <span
+              className={cn(
+                'rounded-full px-2 py-0.5 text-[11px] font-medium leading-none',
+                syncState.className
+              )}
+            >
+              {syncState.label}
+            </span>
+          </div>
         </CardHeader>
         <CardContent className="flex-1 overflow-hidden py-2">
           <div className="text-sm text-muted-foreground line-clamp-4">
