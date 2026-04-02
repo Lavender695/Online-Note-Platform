@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react'
 import { useUser } from '@clerk/nextjs'
-import { Edit, Trash2, X } from 'lucide-react'
+import { Cloud, Download, Edit, Trash2, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -20,9 +20,11 @@ import {
 const SKELETON_COUNT = 8
 
 const Dashboard = () => {
-  const { notes, loading: notesLoading, error, deleteNotes, getAllTags } = useNotes()
+  const { notes, loading: notesLoading, error, deleteNotes, getAllTags, pushAllToCloud, pullFromCloud } = useNotes()
   const { user, isLoaded } = useUser()
   const [isEditMode, setIsEditMode] = useState(false)
+  const [pushingCloud, setPushingCloud] = useState(false)
+  const [pullingCloud, setPullingCloud] = useState(false)
   const [selectedNotes, setSelectedNotes] = useState<string[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
 
@@ -108,6 +110,36 @@ const Dashboard = () => {
     setSelectedNotes([])
   }
 
+  const handlePushAllToCloud = async () => {
+    setPushingCloud(true)
+    try {
+      const result = await pushAllToCloud()
+      if (result.syncedCount === 0) {
+        toast.info('当前没有需要推送的笔记')
+      } else {
+        toast.success(`已推送 ${result.syncedCount} 条笔记到云端`)
+      }
+    } catch (syncError: unknown) {
+      const message = syncError instanceof Error ? syncError.message : '未知错误'
+      toast.error('云端推送失败: ' + message)
+    } finally {
+      setPushingCloud(false)
+    }
+  }
+
+  const handlePullAllFromCloud = async () => {
+    setPullingCloud(true)
+    try {
+      const result = await pullFromCloud()
+      toast.success(`已从云端拉取 ${result.pulledCount} 条笔记`)
+    } catch (syncError: unknown) {
+      const message = syncError instanceof Error ? syncError.message : '未知错误'
+      toast.error('云端拉取失败: ' + message)
+    } finally {
+      setPullingCloud(false)
+    }
+  }
+
   if (error) {
     return (
       <div className="flex min-h-[calc(100vh-48px)] items-center justify-center">
@@ -135,6 +167,45 @@ const Dashboard = () => {
           onToggleTag={toggleTagSelection}
           onClear={clearSelectedTags}
         />
+
+        <div className="mt-5 flex gap-2">
+          <Button
+            variant="secondary"
+            onClick={handlePushAllToCloud}
+            disabled={pushingCloud || notesLoading}
+            className="flex items-center gap-2"
+          >
+            {pushingCloud ? (
+              <>
+                <Cloud className="h-4 w-4 animate-spin" />
+                推送中...
+              </>
+            ) : (
+              <>
+                <Upload className="h-4 w-4" />
+                一键推送云端
+              </>
+            )}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handlePullAllFromCloud}
+            disabled={pullingCloud || notesLoading}
+            className="flex items-center gap-2"
+          >
+            {pullingCloud ? (
+              <>
+                <Cloud className="h-4 w-4 animate-spin" />
+                拉取中...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4" />
+                一键拉取云端
+              </>
+            )}
+          </Button>
+        </div>
 
         {isEditMode ? (
           <div className="mt-5 flex gap-2">

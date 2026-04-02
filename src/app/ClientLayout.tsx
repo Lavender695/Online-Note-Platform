@@ -22,7 +22,7 @@ export function ClientLayout({ children }: ClientLayoutProps) {
   return (
     <ClerkProvider>
       {children}
-      <Toaster position="top-right" />
+      <Toaster position="bottom-right" />
     </ClerkProvider>
   );
 }

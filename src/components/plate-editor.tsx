@@ -27,7 +27,7 @@ type Props = {
 };
 
 export function PlateEditor({ note, tempNoteId }: Props) {
-  const { deleteNotes, notes, getAllTags, createNote, updateNote, pushToCloud, pullFromCloud } = useNotes();
+  const { deleteNotes, notes, getAllTags, createNote, updateNote, pushToCloud, pullNoteFromCloud } = useNotes();
   const router = useRouter();
   
   const [saving, setSaving] = React.useState(false);
@@ -302,10 +302,16 @@ export function PlateEditor({ note, tempNoteId }: Props) {
 
   const handlePullFromCloud = () => {
     void (async () => {
+      if (!currentNote?.id) {
+        toast.info('请先创建笔记后再从云端拉取');
+        return;
+      }
+
       setPullingCloud(true);
       try {
-        const merged = await pullFromCloud();
-        toast.success(`已从云端拉取 ${merged.length} 条笔记`);
+        await pullNoteFromCloud(currentNote.id);
+        toast.success('已从云端拉取当前笔记');
+        window.location.reload();
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : '未知错误';
         toast.error('云端拉取失败: ' + message);

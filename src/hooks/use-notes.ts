@@ -324,25 +324,31 @@ export function useNotes() {
       return;
     }
 
+    const supabase = await getSupabaseClient();
+    const { error: deleteError } = await supabase
+      .from('notes')
+      .delete()
+      .eq('user_id', user.id)
+      .in('id', ids);
+
+    if (deleteError) {
+      throw new Error(deleteError.message);
+    }
+
     updateLocalNotes((prev) => prev.filter((note) => !ids.includes(note.id)));
     setSearchResults((prev) => prev.filter((note) => !ids.includes(note.id)));
     setError(null);
   };
 
-  const pushToCloud = async (noteId: string) => {
+  const syncSingleNoteToCloud = async (target: Note) => {
     if (!user) {
       throw new Error('User not authenticated');
-    }
-
-    const target = notes.find((note) => note.id === noteId);
-    if (!target) {
-      throw new Error('Note not found in local metadata');
     }
 
     let latestContent = target.content;
 
     try {
-      latestContent = await readContentFromIndexedDb(noteId);
+      latestContent = await readContentFromIndexedDb(target.id);
     } catch {
       // If indexeddb read fails, fallback to existing local metadata content.
     }
@@ -388,10 +394,55 @@ export function useNotes() {
       syncState: 'synced',
     };
 
+    return syncedNote;
+  };
+
+  const pushToCloud = async (noteId: string) => {
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    const target = notes.find((note) => note.id === noteId);
+    if (!target) {
+      throw new Error('Note not found in local metadata');
+    }
+    const syncedNote = await syncSingleNoteToCloud(target);
+
     updateLocalNotes((prev) => prev.map((note) => (note.id === noteId ? syncedNote : note)));
     setError(null);
 
     return syncedNote;
+  };
+
+  const pushAllToCloud = async () => {
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    const candidates = notes.filter((note) => note.syncState !== 'synced');
+
+    if (candidates.length === 0) {
+      return {
+        syncedCount: 0,
+        syncedNotes: [] as Note[],
+      };
+    }
+
+    const syncedNotes = await Promise.all(candidates.map((note) => syncSingleNoteToCloud(note)));
+    const syncedMap = new Map(syncedNotes.map((note) => [note.id, note]));
+
+    updateLocalNotes((prev) =>
+      prev.map((note) => {
+        const synced = syncedMap.get(note.id);
+        return synced ?? note;
+      })
+    );
+
+    setError(null);
+    return {
+      syncedCount: syncedNotes.length,
+      syncedNotes,
+    };
   };
 
   const pullFromCloud = async () => {
@@ -423,25 +474,77 @@ export function useNotes() {
       })
     );
 
-    let mergedNotes: Note[] = [];
+    const cloudIdSet = new Set(cloudNotes.map((note) => note.id));
+    const merged = new Map(
+      notes.map((note) => {
+        if (!cloudIdSet.has(note.id)) {
+          return [note.id, { ...note, syncState: 'dirty' as const }];
+        }
+
+        return [note.id, note];
+      })
+    );
+
+    cloudNotes.forEach((cloudNote) => {
+      merged.set(cloudNote.id, {
+        ...cloudNote,
+        user_id: cloudNote.user_id || user.id,
+        syncState: 'synced',
+      });
+    });
+
+    const mergedNotes = sortNotesByUpdatedAt(Array.from(merged.values()));
+
+    updateLocalNotes(() => mergedNotes);
+
+    setError(null);
+    return {
+      pulledCount: cloudNotes.length,
+      mergedCount: mergedNotes.length,
+      notes: mergedNotes,
+    };
+  };
+
+  const pullNoteFromCloud = async (noteId: string) => {
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    const supabase = await getSupabaseClient();
+    const { data, error: fetchError } = await supabase
+      .from('notes')
+      .select('*')
+      .eq('id', noteId)
+      .maybeSingle();
+
+    if (fetchError) {
+      throw new Error(fetchError.message);
+    }
+
+    if (!data) {
+      throw new Error('Cloud note not found');
+    }
+
+    const mapped = mapRowToNote(data as NoteRow);
+    const cloudNote: Note = {
+      ...mapped,
+      syncState: 'synced',
+    };
+
+    await writeContentToIndexedDb(cloudNote.id, cloudNote.content);
 
     updateLocalNotes((prev) => {
       const merged = new Map(prev.map((note) => [note.id, note]));
-
-      cloudNotes.forEach((cloudNote) => {
-        merged.set(cloudNote.id, {
-          ...cloudNote,
-          user_id: cloudNote.user_id || user.id,
-          syncState: 'synced',
-        });
+      merged.set(cloudNote.id, {
+        ...cloudNote,
+        user_id: cloudNote.user_id || user.id,
+        syncState: 'synced',
       });
-
-      mergedNotes = Array.from(merged.values());
-      return mergedNotes;
+      return Array.from(merged.values());
     });
 
     setError(null);
-    return sortNotesByUpdatedAt(mergedNotes);
+    return cloudNote;
   };
 
   // ---------------- Search and filtering ---------------- //
@@ -516,7 +619,9 @@ export function useNotes() {
     updateNote,
     deleteNotes,
     pushToCloud,
+    pushAllToCloud,
     pullFromCloud,
+    pullNoteFromCloud,
     searchNotes,
     getAllTags,
     refreshNotes,
