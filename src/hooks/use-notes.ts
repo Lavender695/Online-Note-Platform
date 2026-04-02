@@ -1,8 +1,58 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { Note } from '@/types/note';
-import { useUser } from '@clerk/nextjs';
+import { createClerkSupabaseClient } from '@/lib/supabase';
+import { useAuth, useUser } from '@clerk/nextjs';
 
+type NoteRow = {
+  id?: unknown;
+  title?: unknown;
+  content?: unknown;
+  user_id?: unknown;
+  created_at?: unknown;
+  updated_at?: unknown;
+  tags?: unknown;
+};
+
+const toSafeString = (value: unknown, fallback = ''): string =>
+  typeof value === 'string' ? value : fallback;
+
+const toSafeTags = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((tag): tag is string => typeof tag === 'string');
+};
+
+const mapRowToNote = (row: NoteRow): Note => ({
+  id: toSafeString(row.id),
+  title: toSafeString(row.title, '无标题笔记'),
+  content: toSafeString(row.content, ''),
+  user_id: toSafeString(row.user_id),
+  created_at: toSafeString(row.created_at, new Date(0).toISOString()),
+  updated_at: toSafeString(row.updated_at, new Date(0).toISOString()),
+  tags: toSafeTags(row.tags),
+});
+
+type RichTextNode = {
+  children?: Array<{ text?: string }>;
+};
+
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string' && message.trim()) {
+      return message;
+    }
+  }
+
+  return 'Unknown error';
+};
 
 export function useNotes() {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -10,109 +60,169 @@ export function useNotes() {
   const [error, setError] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<Note[]>([]);
   
+  const { getToken } = useAuth();
   const { user, isLoaded } = useUser();
-  
-  // 生成用户专属的 LocalStorage Key
-  const getStorageKey = useCallback(() => {
-    if (!user) return 'default-notes';
-    return `notes_${user.id}`;
-  }, [user]);
 
-  // 初始化：从 LocalStorage 加载数据
+  const getSupabaseClient = useCallback(async () => {
+    const token = await getToken({ template: 'supabase' });
+
+    if (!token) {
+      throw new Error('Missing Clerk Supabase token');
+    }
+
+    return createClerkSupabaseClient(token);
+  }, [getToken]);
+
+  // 初始化：从 Supabase 加载数据
   useEffect(() => {
     if (!isLoaded) return;
+
     if (!user) {
+      setNotes([]);
       setLoading(false);
       return;
     }
-    
-    try {
-      const key = getStorageKey();
-      const savedData = localStorage.getItem(key);
-      
-      if (savedData) {
-        const parsedNotes = JSON.parse(savedData) as Note[];
-        // 按更新时间降序排列
-        parsedNotes.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-        setNotes(parsedNotes);
-      }
-    } catch (e: any) {
-      console.error('加载本地笔记失败:', e);
-      setError('加载笔记失败: ' + e.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [user, isLoaded, getStorageKey]);
 
-  // 内部辅助函数：保存数据到 State 和 LocalStorage
-  const saveNotesToLocal = (newNotes: Note[]) => {
-    setNotes(newNotes);
-    if (user) {
-      localStorage.setItem(getStorageKey(), JSON.stringify(newNotes));
-    }
-  };
+    let cancelled = false;
+
+    const loadNotes = async () => {
+      setLoading(true);
+      try {
+        const supabase = await getSupabaseClient();
+        const { data, error: fetchError } = await supabase
+          .from('notes')
+          .select('*')
+          .order('updated_at', { ascending: false });
+
+        if (fetchError) {
+          throw fetchError;
+        }
+
+        if (!cancelled) {
+          const fetchedNotes = ((data ?? []) as NoteRow[]).map(mapRowToNote);
+          setNotes(fetchedNotes);
+          setError(null);
+        }
+      } catch (e: unknown) {
+        if (!cancelled) {
+          const message = getErrorMessage(e);
+          setError('加载笔记失败: ' + message);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadNotes();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, isLoaded, getSupabaseClient]);
 
   // ---------------- 核心操作方法 ---------------- //
 
-  const getNoteById = (id: string) => notes.find(note => note.id === id);
+  const getNoteById = async (id: string) => {
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    const supabase = await getSupabaseClient();
+    const { data, error: fetchError } = await supabase
+      .from('notes')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (fetchError) {
+      throw new Error(fetchError.message);
+    }
+
+    return data ? mapRowToNote(data as NoteRow) : undefined;
+  };
 
   const createNote = async (title: string, content: string, tags: string[] = []) => {
     if (!user) throw new Error('User not authenticated');
-    
-    const newNote: Note = {
-      id: crypto.randomUUID(),
-      title,
-      content,
-      user_id: user.id,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      tags,
-    };
-    
-    // 将新笔记放到数组开头
-    const newNotes = [newNote, ...notes];
-    saveNotesToLocal(newNotes);
-    
+
+    const supabase = await getSupabaseClient();
+    const { data, error: insertError } = await supabase
+      .from('notes')
+      .insert({
+        title,
+        content,
+        tags,
+      })
+      .select('*')
+      .single();
+
+    if (insertError) {
+      throw new Error(insertError.message);
+    }
+
+    const newNote = mapRowToNote(data as NoteRow);
+    setNotes((prev) => [newNote, ...prev.filter((note) => note.id !== newNote.id)]);
+    setError(null);
+
     return newNote;
   };
 
   const updateNote = async (id: string, title: string, content: string, tags?: string[]) => {
     if (!user) throw new Error('User not authenticated');
-    
-    let updatedNote: Note | undefined;
-    
-    const newNotes = notes.map(note => {
-      if (note.id === id) {
-        updatedNote = {
-          ...note,
-          title,
-          content,
-          tags: tags !== undefined ? tags : note.tags || [],
-          updated_at: new Date().toISOString(),
-        };
-        return updatedNote;
-      }
-      return note;
-    });
-    
-    if (updatedNote) {
-      // 重新排序，把最近更新的放在前面
-      newNotes.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-      saveNotesToLocal(newNotes);
-      return updatedNote;
+
+    const supabase = await getSupabaseClient();
+    const currentTags = tags ?? notes.find((note) => note.id === id)?.tags ?? [];
+
+    const { data, error: updateError } = await supabase
+      .from('notes')
+      .update({
+        title,
+        content,
+        tags: currentTags,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select('*')
+      .maybeSingle();
+
+    if (updateError) {
+      throw new Error(updateError.message);
     }
-    
-    return notes.find(note => note.id === id);
+
+    if (!data) {
+      return undefined;
+    }
+
+    const updatedNote = mapRowToNote(data as NoteRow);
+
+    setNotes((prev) => {
+      const next = prev.map((note) => (note.id === id ? updatedNote : note));
+      next.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+      return next;
+    });
+    setError(null);
+
+    return updatedNote;
   };
 
   const deleteNotes = async (ids: string[]) => {
     if (!user) throw new Error('User not authenticated');
-    
-    const newNotes = notes.filter(note => !ids.includes(note.id));
-    saveNotesToLocal(newNotes);
-    
-    // 同步清理搜索结果
-    setSearchResults(prev => prev.filter(note => !ids.includes(note.id)));
+    if (ids.length === 0) return;
+
+    const supabase = await getSupabaseClient();
+    const { error: deleteError } = await supabase
+      .from('notes')
+      .delete()
+      .in('id', ids);
+
+    if (deleteError) {
+      throw new Error(deleteError.message);
+    }
+
+    setNotes((prev) => prev.filter((note) => !ids.includes(note.id)));
+    setSearchResults((prev) => prev.filter((note) => !ids.includes(note.id)));
+    setError(null);
   };
 
   // ---------------- 搜索与筛选 ---------------- //
@@ -128,22 +238,27 @@ export function useNotes() {
       let contentMatch = false;
       try {
         if (note.content) {
-          const contentObj = JSON.parse(note.content);
-          const plainText = Array.isArray(contentObj) 
-            ? contentObj.map((node: any) => node.children?.[0]?.text || '').join(' ')
+          const contentObj = JSON.parse(note.content) as unknown;
+          const plainText = Array.isArray(contentObj)
+            ? contentObj
+                .map((node) => {
+                  const typedNode = node as RichTextNode;
+                  return typedNode.children?.[0]?.text || '';
+                })
+                .join(' ')
             : '';
           contentMatch = plainText.toLowerCase().includes(query.toLowerCase());
         }
-      } catch (e) {
+      } catch {
         contentMatch = note.content?.toLowerCase().includes(query.toLowerCase()) || false;
       }
-      
-      const tagMatch = selectedTags.length === 0 || 
-        (note.tags && selectedTags.every(tag => note.tags!.includes(tag)));
-      
+
+      const tagMatch = selectedTags.length === 0 ||
+        (note.tags && selectedTags.every(tag => note.tags.includes(tag)));
+
       return (titleMatch || contentMatch) && tagMatch;
     });
-    
+
     setSearchResults(results);
     setError(null);
     return results;
@@ -161,6 +276,7 @@ export function useNotes() {
     notes,
     loading,
     error,
+    getSupabaseClient,
     searchResults,
     getNoteById,
     createNote,

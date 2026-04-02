@@ -120,6 +120,9 @@ export function PlateEditor({ note }: Props) {
 
   // 将内容转为 Editor Value
   const getEditorValue = () => {
+    const safeTitle = typeof note?.title === 'string' && note.title.trim() ? note.title : '无标题';
+    const safeContent = typeof note?.content === 'string' ? note.content : '';
+
     // 1. 先尝试从 LocalStorage 恢复单草稿
     const draft: EditorDraft | null = readEditorDraft();
     const targetNoteId = note?.id ?? null;
@@ -143,7 +146,7 @@ export function PlateEditor({ note }: Props) {
     
     // 3. 如果有 note，解析 note 的内容
     try {
-      const parsedContent = JSON.parse(note.content);
+      const parsedContent = JSON.parse(safeContent);
       if (Array.isArray(parsedContent)) {
         return normalizeNodeId(parsedContent);
       }
@@ -152,8 +155,8 @@ export function PlateEditor({ note }: Props) {
     }
     
     return normalizeNodeId([
-      { children: [{ text: note.title || '无标题' }], type: 'h1' },
-      { children: [{ text: note.content }], type: 'p' },
+      { children: [{ text: safeTitle }], type: 'h1' },
+      { children: [{ text: safeContent }], type: 'p' },
     ]);
   };
 

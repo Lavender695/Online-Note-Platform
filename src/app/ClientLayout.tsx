@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode, useEffect } from 'react';
-import { AuthProvider } from '@/hooks/use-auth';
+import { ClerkProvider } from '@clerk/nextjs';
 import { Toaster } from 'sonner';
 
 interface ClientLayoutProps {
@@ -20,9 +20,9 @@ export function ClientLayout({ children }: ClientLayoutProps) {
   }, []);
 
   return (
-    <AuthProvider>
+    <ClerkProvider>
       {children}
       <Toaster position="top-right" />
-    </AuthProvider>
+    </ClerkProvider>
   );
 }
