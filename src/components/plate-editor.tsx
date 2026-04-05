@@ -60,6 +60,7 @@ export function PlateEditor({ note, tempNoteId, sharedRoomId }: Props) {
   const [lastSaved, setLastSaved] = React.useState<Date | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [showClearDialog, setShowClearDialog] = React.useState(false);
+  const liveblocksPublicKey = process.env.NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY ?? '';
   
   // 原生离线状态检测
   const [isOffline, setIsOffline] = React.useState(typeof navigator !== 'undefined' ? !navigator.onLine : false);
@@ -72,7 +73,7 @@ export function PlateEditor({ note, tempNoteId, sharedRoomId }: Props) {
   const [showTagDropdown, setShowTagDropdown] = React.useState(false);
   const [allTags, setAllTags] = React.useState<string[]>([]);
   const [yjsReady, setYjsReady] = React.useState(false);
-  const [isCollaborating, setIsCollaborating] = React.useState(false);
+  const [isCollaborating, setIsCollaborating] = React.useState(Boolean(sharedRoomId && liveblocksPublicKey));
   const [liveblocksConnected, setLiveblocksConnected] = React.useState(false);
   const collaborationSnapshotRef = React.useRef<Uint8Array | null>(null);
   const tagDropdownRef = React.useRef<HTMLDivElement>(null);
@@ -83,7 +84,6 @@ export function PlateEditor({ note, tempNoteId, sharedRoomId }: Props) {
       ? `${tempNoteId}`
       : `temp-share-room-${Math.random().toString(36).slice(2, 10)}`
   );
-  const liveblocksPublicKey = process.env.NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY ?? '';
   const currentNote = React.useMemo(
     () => (note?.id ? notes.find((item) => item.id === note.id) ?? note : note),
     [note, notes]
