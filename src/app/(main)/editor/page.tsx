@@ -8,14 +8,16 @@ import EditorPageSkeleton from '@/components/layout/editor/EditorPageSkeleton';
 function EditorContent() {
   const searchParams = useSearchParams();
   const noteId = searchParams.get('id');
+  const sharedRoomId = searchParams.get('room');
   const { notes, loading, error, refreshNotes } = useNotes();
 
   // Generate a unique temporary ID for new notes to avoid IndexedDB cache conflicts
   const tempNoteId = useMemo(() => {
     if (noteId) return noteId;
+    if (sharedRoomId) return sharedRoomId;
     // Create a unique temporary ID for each new note session
     return `temp:${crypto.randomUUID()}`;
-  }, [noteId]);
+  }, [noteId, sharedRoomId]);
 
   // Find the note with the matching ID
   const note = noteId ? notes.find(note => note.id === noteId) : undefined;
@@ -35,7 +37,7 @@ function EditorContent() {
     return <div className="flex items-center justify-center h-screen text-xl text-red-500">{error}</div>;
   }
 
-  return <PlateEditor key={tempNoteId} note={note} tempNoteId={tempNoteId} />;
+  return <PlateEditor key={tempNoteId} note={note} tempNoteId={tempNoteId} sharedRoomId={sharedRoomId ?? undefined} />;
 }
 
 export default function EditorPage() {

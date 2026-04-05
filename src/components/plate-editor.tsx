@@ -26,6 +26,7 @@ import { AIToolbar } from '@/components/ai-toolbar';
 type Props = {
   note?: Note;
   tempNoteId?: string;
+  sharedRoomId?: string;
 };
 
 type CollaborationBridgeProps = {
@@ -49,7 +50,7 @@ function LiveblocksCollaborationBridge({ yDoc, onConnectionChange }: Collaborati
   return null;
 }
 
-export function PlateEditor({ note, tempNoteId }: Props) {
+export function PlateEditor({ note, tempNoteId, sharedRoomId }: Props) {
   const { deleteNotes, notes, getAllTags, createNote, updateNote, pushToCloud, pullNoteFromCloud } = useNotes();
   const router = useRouter();
   
@@ -76,7 +77,9 @@ export function PlateEditor({ note, tempNoteId }: Props) {
   const collaborationSnapshotRef = React.useRef<Uint8Array | null>(null);
   const tagDropdownRef = React.useRef<HTMLDivElement>(null);
   const tempRoomIdRef = React.useRef(
-    tempNoteId
+    sharedRoomId
+      ? `${sharedRoomId}`
+      : tempNoteId
       ? `${tempNoteId}`
       : `temp-share-room-${Math.random().toString(36).slice(2, 10)}`
   );
@@ -89,6 +92,22 @@ export function PlateEditor({ note, tempNoteId }: Props) {
     () => (currentNote?.id ? currentNote.id : tempRoomIdRef.current),
     [currentNote?.id]
   );
+
+  const buildCollaborationShareLink = React.useCallback(() => {
+    if (typeof window === 'undefined') return '';
+
+    const url = new URL('/editor', window.location.origin);
+
+    if (currentNote?.id) {
+      url.searchParams.set('id', currentNote.id);
+    }
+
+    // Keep explicit room parameter so collaborators can join the exact same room,
+    // including unsaved temporary sessions.
+    url.searchParams.set('room', roomId);
+
+    return url.toString();
+  }, [currentNote?.id, roomId]);
 
   // 获取所有可用标签
   React.useEffect(() => {
@@ -254,6 +273,17 @@ export function PlateEditor({ note, tempNoteId }: Props) {
       const hasLocalContent = sharedType.length > 0;
       collaborationSnapshotRef.current = hasLocalContent ? Y.encodeStateAsUpdate(yDoc) : null;
       setLiveblocksConnected(false);
+
+      const shareLink = buildCollaborationShareLink();
+      if (shareLink) {
+        void navigator.clipboard.writeText(shareLink)
+          .then(() => {
+            toast.success('协作链接已复制，发送给好友并让对方打开该链接就可以一起编辑啦~');
+          })
+          .catch(() => {
+            toast.info('协作已开启。请手动复制当前地址栏链接并发送给好友试试吧~');
+          });
+      }
     } else {
       collaborationSnapshotRef.current = null;
       setLiveblocksConnected(false);
