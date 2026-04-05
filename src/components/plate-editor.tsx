@@ -3,7 +3,9 @@
 import * as React from 'react';
 import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
-import { withYjs, YjsEditor } from '@slate-yjs/core';
+import { withYjs, YjsEditor, yTextToSlateElement } from '@slate-yjs/core';
+import { LiveblocksProvider, RoomProvider, useRoom } from '@liveblocks/react';
+import { LiveblocksYjsProvider } from '@liveblocks/yjs';
 import { useRouter } from 'next/navigation';
 
 import { normalizeNodeId } from 'platejs';
@@ -25,6 +27,27 @@ type Props = {
   note?: Note;
   tempNoteId?: string;
 };
+
+type CollaborationBridgeProps = {
+  yDoc: Y.Doc;
+  onConnectionChange: (connected: boolean) => void;
+};
+
+function LiveblocksCollaborationBridge({ yDoc, onConnectionChange }: CollaborationBridgeProps) {
+  const room = useRoom();
+
+  React.useEffect(() => {
+    const provider = new LiveblocksYjsProvider(room, yDoc);
+    onConnectionChange(true);
+
+    return () => {
+      provider.destroy();
+      onConnectionChange(false);
+    };
+  }, [room, yDoc, onConnectionChange]);
+
+  return null;
+}
 
 export function PlateEditor({ note, tempNoteId }: Props) {
   const { deleteNotes, notes, getAllTags, createNote, updateNote, pushToCloud, pullNoteFromCloud } = useNotes();
@@ -48,10 +71,23 @@ export function PlateEditor({ note, tempNoteId }: Props) {
   const [showTagDropdown, setShowTagDropdown] = React.useState(false);
   const [allTags, setAllTags] = React.useState<string[]>([]);
   const [yjsReady, setYjsReady] = React.useState(false);
+  const [isCollaborating, setIsCollaborating] = React.useState(false);
+  const [liveblocksConnected, setLiveblocksConnected] = React.useState(false);
+  const collaborationSnapshotRef = React.useRef<Uint8Array | null>(null);
   const tagDropdownRef = React.useRef<HTMLDivElement>(null);
+  const tempRoomIdRef = React.useRef(
+    tempNoteId
+      ? `${tempNoteId}`
+      : `temp-share-room-${Math.random().toString(36).slice(2, 10)}`
+  );
+  const liveblocksPublicKey = process.env.NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY ?? '';
   const currentNote = React.useMemo(
     () => (note?.id ? notes.find((item) => item.id === note.id) ?? note : note),
     [note, notes]
+  );
+  const roomId = React.useMemo(
+    () => (currentNote?.id ? currentNote.id : tempRoomIdRef.current),
+    [currentNote?.id]
   );
 
   // 获取所有可用标签
@@ -206,6 +242,46 @@ export function PlateEditor({ note, tempNoteId }: Props) {
     }
   };
 
+  const handleCollaborationToggle = () => {
+    if (!isCollaborating && !liveblocksPublicKey) {
+      toast.error('请先配置 NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY');
+      return;
+    }
+
+    // Keep a local snapshot before enabling collaboration.
+    // If the room is empty/stale, remote sync should not wipe local content.
+    if (!isCollaborating) {
+      const hasLocalContent = sharedType.length > 0;
+      collaborationSnapshotRef.current = hasLocalContent ? Y.encodeStateAsUpdate(yDoc) : null;
+      setLiveblocksConnected(false);
+    } else {
+      collaborationSnapshotRef.current = null;
+      setLiveblocksConnected(false);
+    }
+
+    setIsCollaborating((prev) => !prev);
+  };
+
+  React.useEffect(() => {
+    if (!isCollaborating || !liveblocksConnected) return;
+
+    const snapshot = collaborationSnapshotRef.current;
+    if (!snapshot) return;
+
+    const timer = window.setTimeout(() => {
+      const sharedContent = yDoc.get('content', Y.XmlText);
+
+      if (sharedContent.length === 0) {
+        Y.applyUpdate(yDoc, snapshot);
+        toast.warning('检测到协作房间为空，已恢复本地内容并同步到协作房间');
+      }
+
+      collaborationSnapshotRef.current = null;
+    }, 1200);
+
+    return () => window.clearTimeout(timer);
+  }, [isCollaborating, liveblocksConnected, yDoc]);
+
   // 辅助函数：递归提取文本内容
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getTextContent = React.useCallback((element: any): string => {
@@ -226,6 +302,21 @@ export function PlateEditor({ note, tempNoteId }: Props) {
     return '';
   }, [editor, getTextContent]);
 
+  const persistYDocSnapshotToIndexedDb = React.useCallback(async (noteId: string): Promise<void> => {
+    const idbDoc = new Y.Doc();
+    const persistence = new IndexeddbPersistence(`note:${noteId}`, idbDoc);
+
+    try {
+      await persistence.whenSynced;
+      const update = Y.encodeStateAsUpdate(yDoc);
+      Y.applyUpdate(idbDoc, update);
+      await Promise.resolve();
+    } finally {
+      persistence.destroy();
+      idbDoc.destroy();
+    }
+  }, [yDoc]);
+
   const persistLocalMetadata = React.useCallback(async (): Promise<Note | undefined> => {
     if (!editor) return undefined;
 
@@ -233,7 +324,10 @@ export function PlateEditor({ note, tempNoteId }: Props) {
       YjsEditor.flushLocalChanges(editor);
     }
 
-    const children = Array.isArray(editor.children) ? editor.children : [];
+    const yDocChildren = yTextToSlateElement(sharedType).children;
+    const children = Array.isArray(yDocChildren)
+      ? yDocChildren
+      : (Array.isArray(editor.children) ? editor.children : []);
     const content = JSON.stringify(children);
     const firstBlockText = children
       .map((node) => getTextContent(node).trim())
@@ -241,6 +335,9 @@ export function PlateEditor({ note, tempNoteId }: Props) {
     const title = firstBlockText || currentNote?.title || '无标题笔记';
 
     if (currentNote?.id) {
+      // Ensure collaborative Yjs state is immediately available in local IndexedDB
+      // before navigating away or reopening the note.
+      await persistYDocSnapshotToIndexedDb(currentNote.id);
       const updated = await updateNote(currentNote.id, title, content, tags);
       setLastSaved(new Date());
       return updated;
@@ -256,7 +353,7 @@ export function PlateEditor({ note, tempNoteId }: Props) {
 
     setLastSaved(new Date());
     return created;
-  }, [createNote, currentNote, editor, getTextContent, router, tags, updateNote]);
+  }, [createNote, currentNote, editor, getTextContent, persistYDocSnapshotToIndexedDb, router, sharedType, tags, updateNote]);
 
   const handleLocalSaveClick = () => {
     void (async () => {
@@ -374,7 +471,7 @@ export function PlateEditor({ note, tempNoteId }: Props) {
     );
   }
 
-  return (
+  const editorContent = (
     <Plate editor={editor} onChange={handleUserActivity}>
       {/* 标签输入区域 */}
       <div className="fixed left-0 right-0 top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 md:left-(--sidebar-width)">
@@ -473,6 +570,16 @@ export function PlateEditor({ note, tempNoteId }: Props) {
             >
               <Sparkles className="h-3 w-3" />
               <span className="hidden sm:inline">AI 助手</span>
+            </Button>
+
+            <Button
+              onClick={handleCollaborationToggle}
+              variant={isCollaborating ? 'default' : 'outline'}
+              size="sm"
+              className="shrink-0 flex items-center gap-2 cursor-pointer"
+            >
+              <Cloud className={`h-3 w-3 ${isCollaborating && !liveblocksConnected ? 'animate-pulse' : ''}`} />
+              {isCollaborating ? (liveblocksConnected ? '协作已开启' : '连接协作中...') : '开启协作'}
             </Button>
 
             <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
@@ -590,5 +697,18 @@ export function PlateEditor({ note, tempNoteId }: Props) {
         )}
       </EditorContainer>
     </Plate>
+  );
+
+  if (!isCollaborating) {
+    return editorContent;
+  }
+
+  return (
+    <LiveblocksProvider publicApiKey={liveblocksPublicKey}>
+      <RoomProvider id={roomId}>
+        <LiveblocksCollaborationBridge yDoc={yDoc} onConnectionChange={setLiveblocksConnected} />
+        {editorContent}
+      </RoomProvider>
+    </LiveblocksProvider>
   );
 }

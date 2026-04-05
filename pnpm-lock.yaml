@@ -23,6 +23,15 @@ importers:
       '@faker-js/faker':
         specifier: ^10.1.0
         version: 10.1.0
+      '@liveblocks/client':
+        specifier: ^3.17.0
+        version: 3.17.0(@types/json-schema@7.0.15)
+      '@liveblocks/react':
+        specifier: ^3.17.0
+        version: 3.17.0(@types/json-schema@7.0.15)(@types/react-dom@18.3.7(@types/react@18.3.27))(@types/react@18.3.27)(react@18.3.1)
+      '@liveblocks/yjs':
+        specifier: ^3.17.0
+        version: 3.17.0(@types/json-schema@7.0.15)(yjs@13.6.30)
       '@platejs/ai':
         specifier: ^51.1.2
         version: 51.1.2(platejs@51.1.3(@types/react@18.3.27)(immer@10.2.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(scheduler@0.27.0)(use-sync-external-store@1.6.0(react@18.3.1)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
@@ -755,6 +764,31 @@ packages:
   '@juggle/resize-observer@3.4.0':
     resolution: {integrity: sha512-dfLbk+PwWvFzSxwk3n5ySL0hfBog779o8h68wK/7/APo/7cgyWp5jcXockbxdk5kFRkbeXWm4Fbi9FrdN381sA==}
 
+  '@liveblocks/client@3.17.0':
+    resolution: {integrity: sha512-DHKuYzMn6laLUyo2IB90gmUHOHT4S58DcqXqlide6MLl/XmrSIv9xduU+w7y0ndWhhbVlmEcPku7/Qd5rWBeWw==}
+
+  '@liveblocks/core@3.17.0':
+    resolution: {integrity: sha512-96xqhBDQCBY3hkNuBzbD4n52dS66P+ZqxeXfa1LegA32knIDD86UCSxMlAFQOM69k3r3vuSPBf0yyf2L/k7kxg==}
+    peerDependencies:
+      '@types/json-schema': ^7
+
+  '@liveblocks/react@3.17.0':
+    resolution: {integrity: sha512-xqMc80oFNDIniZyok0rVdUmuzrIfO+tIflUG8yI+AN7b6r9u3ZQtcDzFiJLhCkZ3xFWOlKbnZgOXnvStvgpEQg==}
+    peerDependencies:
+      '@types/react': '*'
+      '@types/react-dom': '*'
+      react: ^18 || ^19 || ^19.0.0-rc
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      '@types/react-dom':
+        optional: true
+
+  '@liveblocks/yjs@3.17.0':
+    resolution: {integrity: sha512-TMdzjBeGjqSq3gxHkpWi8HffvfZAx/qRsSk0rdhhCngjYXNIpMUcfWoCwyXevWXy0ghgxfRh25jR54MMKWCQ/Q==}
+    peerDependencies:
+      yjs: ^13.6.1
+
   '@mux/mux-data-google-ima@0.2.8':
     resolution: {integrity: sha512-0ZEkHdcZ6bS8QtcjFcoJeZxJTpX7qRIledf4q1trMWPznugvtajCjCM2kieK/pzkZj1JM6liDRFs1PJSfVUs2A==}
 
@@ -840,6 +874,10 @@ packages:
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
+
+  '@noble/hashes@1.8.0':
+    resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
+    engines: {node: ^14.21.3 || >=16}
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -3776,6 +3814,9 @@ packages:
       react:
         optional: true
 
+  js-base64@3.7.8:
+    resolution: {integrity: sha512-hNngCeKxIUQiEUN3GPJOkz4wF/YvdUdbNL9hsBcMQTkKzboD7T/q3OYOuuPZLUE6dBxSGpwhk5mwuDud7JVAow==}
+
   js-cookie@3.0.5:
     resolution: {integrity: sha512-cEiJEAEoIbWfCZYKWhVwFuvPX1gETRYPw6LlaTKoxD3s2AkXzkCjnp6h0V77ozyqj0jakteJ4YqDJT830+lVGw==}
     engines: {node: '>=14'}
@@ -6034,6 +6075,38 @@ snapshots:
 
   '@juggle/resize-observer@3.4.0': {}
 
+  '@liveblocks/client@3.17.0(@types/json-schema@7.0.15)':
+    dependencies:
+      '@liveblocks/core': 3.17.0(@types/json-schema@7.0.15)
+    transitivePeerDependencies:
+      - '@types/json-schema'
+
+  '@liveblocks/core@3.17.0(@types/json-schema@7.0.15)':
+    dependencies:
+      '@types/json-schema': 7.0.15
+
+  '@liveblocks/react@3.17.0(@types/json-schema@7.0.15)(@types/react-dom@18.3.7(@types/react@18.3.27))(@types/react@18.3.27)(react@18.3.1)':
+    dependencies:
+      '@liveblocks/client': 3.17.0(@types/json-schema@7.0.15)
+      '@liveblocks/core': 3.17.0(@types/json-schema@7.0.15)
+      react: 18.3.1
+    optionalDependencies:
+      '@types/react': 18.3.27
+      '@types/react-dom': 18.3.7(@types/react@18.3.27)
+    transitivePeerDependencies:
+      - '@types/json-schema'
+
+  '@liveblocks/yjs@3.17.0(@types/json-schema@7.0.15)(yjs@13.6.30)':
+    dependencies:
+      '@liveblocks/client': 3.17.0(@types/json-schema@7.0.15)
+      '@liveblocks/core': 3.17.0(@types/json-schema@7.0.15)
+      '@noble/hashes': 1.8.0
+      js-base64: 3.7.8
+      y-indexeddb: 9.0.12(yjs@13.6.30)
+      yjs: 13.6.30
+    transitivePeerDependencies:
+      - '@types/json-schema'
+
   '@mux/mux-data-google-ima@0.2.8':
     dependencies:
       mux-embed: 5.9.0
@@ -6107,6 +6180,8 @@ snapshots:
 
   '@next/swc-win32-x64-msvc@16.0.7':
     optional: true
+
+  '@noble/hashes@1.8.0': {}
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
@@ -9290,6 +9365,8 @@ snapshots:
     optionalDependencies:
       '@types/react': 18.3.27
       react: 18.3.1
+
+  js-base64@3.7.8: {}
 
   js-cookie@3.0.5: {}
 
