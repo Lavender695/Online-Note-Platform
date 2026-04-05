@@ -4,8 +4,9 @@ import * as React from 'react';
 import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
 import { withYjs, YjsEditor, yTextToSlateElement } from '@slate-yjs/core';
-import { LiveblocksProvider, RoomProvider, useRoom } from '@liveblocks/react';
+import { LiveblocksProvider, RoomProvider, useOthers, useRoom, useUpdateMyPresence } from '@liveblocks/react';
 import { LiveblocksYjsProvider } from '@liveblocks/yjs';
+import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 
 import { normalizeNodeId } from 'platejs';
@@ -13,6 +14,7 @@ import { Plate, usePlateEditor } from 'platejs/react';
 
 import { EditorKit } from '@/components/editor-kit';
 import { Editor, EditorContainer } from '@/components/ui/editor';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Note } from '@/types/note';
@@ -34,6 +36,212 @@ type CollaborationBridgeProps = {
   onConnectionChange: (connected: boolean) => void;
 };
 
+type CollaboratorCursor = {
+  x: number;
+  y: number;
+  height: number;
+};
+
+type CollaboratorUser = {
+  id: string;
+  name: string;
+  avatar?: string;
+  color: string;
+};
+
+type CollaborationPresence = {
+  cursor?: CollaboratorCursor | null;
+  user?: CollaboratorUser;
+};
+
+const COLLABORATION_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'];
+
+const getColorById = (id: string) => {
+  let hash = 0;
+
+  for (let i = 0; i < id.length; i += 1) {
+    hash = (hash << 5) - hash + id.charCodeAt(i);
+    hash |= 0;
+  }
+
+  return COLLABORATION_COLORS[Math.abs(hash) % COLLABORATION_COLORS.length];
+};
+
+const withAlpha = (hexColor: string, alpha: string) => `${hexColor}${alpha}`;
+
+const formatCursorLabel = (user: CollaboratorUser) => user.name?.trim() || 'Guest';
+
+const getInitials = (name: string) => {
+  const normalized = name.trim();
+  if (!normalized) return 'U';
+
+  const parts = normalized.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
+};
+
+type PresenceOverlayProps = {
+  targetRef: React.RefObject<HTMLDivElement | null>;
+  currentUser: CollaboratorUser;
+};
+
+function CollaboratorAvatars() {
+  const others = useOthers() as ReadonlyArray<{ connectionId: number; presence: CollaborationPresence }>;
+  const collaborators = others
+    .map((participant) => participant.presence?.user)
+    .filter((user): user is CollaboratorUser => Boolean(user?.id));
+
+  return (
+    <div className="ml-auto flex shrink-0 items-center gap-2">
+      <span className="text-xs text-muted-foreground">
+        在线协作者 {collaborators.length}
+      </span>
+      <div className="flex items-center -space-x-2">
+        {collaborators.slice(0, 6).map((collaborator) => (
+          <Avatar
+            key={collaborator.id}
+            className="size-7 border-2 border-background"
+            style={{ boxShadow: `0 0 0 1px ${collaborator.color}` }}
+            title={`${collaborator.name} (${collaborator.id})`}
+          >
+            <AvatarImage alt={collaborator.name} src={collaborator.avatar} />
+            <AvatarFallback className="text-[10px] font-medium">
+              {getInitials(collaborator.name)}
+            </AvatarFallback>
+          </Avatar>
+        ))}
+      </div>
+      {collaborators.length > 6 && (
+        <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+          +{collaborators.length - 6}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function CollaborationPresenceOverlay({ targetRef, currentUser }: PresenceOverlayProps) {
+  const updateMyPresence = useUpdateMyPresence();
+  const others = useOthers() as ReadonlyArray<{ connectionId: number; presence: CollaborationPresence }>;
+
+  React.useEffect(() => {
+    updateMyPresence({ user: currentUser }, { addToHistory: false });
+  }, [currentUser, updateMyPresence]);
+
+  React.useEffect(() => {
+    const container = targetRef.current;
+    if (!container) return;
+
+    let frameId: number | null = null;
+
+    const syncCursor = () => {
+      frameId = null;
+
+      const editable = container.querySelector('[contenteditable="true"]');
+      if (!(editable instanceof HTMLElement)) return;
+
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) {
+        updateMyPresence({ cursor: null }, { addToHistory: false });
+        return;
+      }
+
+      const range = selection.getRangeAt(0);
+      if (!editable.contains(range.startContainer)) {
+        updateMyPresence({ cursor: null }, { addToHistory: false });
+        return;
+      }
+
+      const rect = range.getBoundingClientRect();
+      if (!rect || (rect.width === 0 && rect.height === 0)) {
+        updateMyPresence({ cursor: null }, { addToHistory: false });
+        return;
+      }
+
+      const containerRect = container.getBoundingClientRect();
+      updateMyPresence({
+        cursor: {
+          height: Math.max(rect.height, 16),
+          x: rect.left - containerRect.left,
+          y: rect.top - containerRect.top,
+        },
+      }, { addToHistory: false });
+    };
+
+    const scheduleSync = () => {
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+      }
+
+      frameId = requestAnimationFrame(syncCursor);
+    };
+
+    const clearCursor = () => {
+      updateMyPresence({ cursor: null }, { addToHistory: false });
+    };
+
+    document.addEventListener('selectionchange', scheduleSync);
+    window.addEventListener('resize', scheduleSync);
+    container.addEventListener('keyup', scheduleSync);
+    container.addEventListener('mouseup', scheduleSync);
+    container.addEventListener('scroll', scheduleSync, true);
+    window.addEventListener('blur', clearCursor);
+
+    scheduleSync();
+
+    return () => {
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+      }
+
+      updateMyPresence({ cursor: null }, { addToHistory: false });
+      document.removeEventListener('selectionchange', scheduleSync);
+      window.removeEventListener('resize', scheduleSync);
+      container.removeEventListener('keyup', scheduleSync);
+      container.removeEventListener('mouseup', scheduleSync);
+      container.removeEventListener('scroll', scheduleSync, true);
+      window.removeEventListener('blur', clearCursor);
+    };
+  }, [targetRef, updateMyPresence]);
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-20">
+      {others.map((other) => {
+        const cursor = other.presence?.cursor;
+        const user = other.presence?.user;
+
+        if (!cursor || !user?.id) return null;
+
+        return (
+          <div
+            key={other.connectionId}
+            className="absolute"
+            style={{ left: cursor.x, top: cursor.y }}
+          >
+            <div
+              className="w-0.5"
+              style={{ backgroundColor: user.color, height: cursor.height }}
+            />
+            <div
+              className="absolute left-0 top-0 -translate-y-full rounded-md px-2 py-0.5 text-[10px] font-medium text-white shadow-sm"
+              style={{ backgroundColor: user.color }}
+            >
+              {formatCursorLabel(user)}
+            </div>
+            <div
+              className="absolute -left-1 top-0 h-2 w-2 rounded-full"
+              style={{ backgroundColor: user.color, boxShadow: `0 0 0 2px ${withAlpha(user.color, '33')}` }}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function LiveblocksCollaborationBridge({ yDoc, onConnectionChange }: CollaborationBridgeProps) {
   const room = useRoom();
 
@@ -52,6 +260,7 @@ function LiveblocksCollaborationBridge({ yDoc, onConnectionChange }: Collaborati
 
 export function PlateEditor({ note, tempNoteId, sharedRoomId }: Props) {
   const { deleteNotes, notes, getAllTags, createNote, updateNote, pushToCloud, pullNoteFromCloud } = useNotes();
+  const { user } = useUser();
   const router = useRouter();
   
   const [saving, setSaving] = React.useState(false);
@@ -77,6 +286,8 @@ export function PlateEditor({ note, tempNoteId, sharedRoomId }: Props) {
   const [liveblocksConnected, setLiveblocksConnected] = React.useState(false);
   const collaborationSnapshotRef = React.useRef<Uint8Array | null>(null);
   const tagDropdownRef = React.useRef<HTMLDivElement>(null);
+  const editorContainerRef = React.useRef<HTMLDivElement>(null);
+  const guestUserIdRef = React.useRef(`guest-${Math.random().toString(36).slice(2, 10)}`);
   const tempRoomIdRef = React.useRef(
     sharedRoomId
       ? `${sharedRoomId}`
@@ -92,6 +303,18 @@ export function PlateEditor({ note, tempNoteId, sharedRoomId }: Props) {
     () => (currentNote?.id ? currentNote.id : tempRoomIdRef.current),
     [currentNote?.id]
   );
+  const currentCollaborator = React.useMemo<CollaboratorUser>(() => {
+    const id = user?.id ?? guestUserIdRef.current;
+    const name = user?.fullName || user?.username || 'Guest';
+    const avatar = user?.imageUrl;
+
+    return {
+      avatar,
+      color: getColorById(id),
+      id,
+      name,
+    };
+  }, [user?.fullName, user?.id, user?.imageUrl, user?.username]);
 
   const buildCollaborationShareLink = React.useCallback(() => {
     if (typeof window === 'undefined') return '';
@@ -695,11 +918,20 @@ export function PlateEditor({ note, tempNoteId, sharedRoomId }: Props) {
             <span className="shrink-0 rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground">
               {syncStateLabel}
             </span>
+
+            {isCollaborating && <CollaboratorAvatars />}
         </div>
       </div>
 
-      <EditorContainer className="relative w-full max-w-full mt-10">
+      <EditorContainer ref={editorContainerRef} className="relative w-full max-w-full mt-10">
         <Editor className="min-h-[500px] min-w-[70vw] w-full max-w-full overflow-x-hidden overflow-y-auto whitespace-pre-wrap wrap-break-word rounded-b-lg bg-background text-sm" />
+
+        {isCollaborating && (
+          <CollaborationPresenceOverlay
+            targetRef={editorContainerRef}
+            currentUser={currentCollaborator}
+          />
+        )}
         
         {lastSaved && (
           <div className="fixed right-3 top-24 z-10 text-xs text-muted-foreground whitespace-nowrap pointer-events-none sm:right-4 md:top-24">
