@@ -37,21 +37,60 @@ export const useChat = () => {
   const editor = useEditorRef();
   const options = usePluginOption(aiChatPlugin, 'chatOptions');
 
+  const getEditorText = React.useCallback(() => {
+    const nodes = Array.isArray(editor.children) ? editor.children : [];
+    const text = nodes
+      .map((node) => NodeApi.string(node))
+      .join('\n')
+      .trim();
+
+    return text || 'The document is currently empty.';
+  }, [editor.children]);
+
   // Keep this method for compatibility with existing consumers.
   const _abortFakeStream = () => {};
 
   const baseChat = useBaseChat<ChatMessage>({
     id: 'editor',
     transport: new DefaultChatTransport({
-      api: options.api || '/api/ai/command',
+      api: options.api || '/api/chat',
       fetch: async (input, init) => {
         const bodyOptions = editor.getOptions(aiChatPlugin).chatOptions?.body;
-        const initBody = JSON.parse(init?.body as string);
+        const initBody = JSON.parse((init?.body as string) ?? '{}') as {
+          messages?: Array<{
+            parts?: Array<{
+              text?: string;
+              type?: string;
+            }>;
+          }>;
+        };
+
+        const editorText = getEditorText();
+        const normalizedMessages = Array.isArray(initBody.messages)
+          ? initBody.messages.map((message) => {
+              if (!Array.isArray(message.parts)) return message;
+
+              return {
+                ...message,
+                parts: message.parts.map((part) => {
+                  if (part?.type !== 'text' || typeof part.text !== 'string') {
+                    return part;
+                  }
+
+                  return {
+                    ...part,
+                    text: part.text.replaceAll('{editor}', editorText),
+                  };
+                }),
+              };
+            })
+          : initBody.messages;
 
         return fetch(input, {
           ...init,
           body: JSON.stringify({
             ...initBody,
+            messages: normalizedMessages,
             ...bodyOptions,
           }),
         });

@@ -1,8 +1,10 @@
 'use client';
 
+import { AIPlugin } from '@platejs/ai/react';
 import { type Value, TrailingBlockPlugin } from 'platejs';
 import { type TPlateEditor, useEditorRef } from 'platejs/react';
 
+import { aiChatPlugin } from '@/components/plate-kits/ai-kit';
 import { AlignKit } from '@/components/plate-kits/align-kit';
 import { AutoformatKit } from '@/components/plate-kits/autoformat-kit';
 import { BasicBlocksKit } from '@/components/plate-kits/basic-blocks-kit';
@@ -33,6 +35,7 @@ import { SlashKit } from '@/components/plate-kits/slash-kit';
 import { TableKit } from '@/components/plate-kits/table-kit';
 import { TocKit } from '@/components/plate-kits/toc-kit';
 import { ToggleKit } from '@/components/plate-kits/toggle-kit';
+import { AILeaf } from '@/components/ui/ai-node';
 
 export const EditorKit = [
   // Elements
@@ -61,6 +64,8 @@ export const EditorKit = [
   // Collaboration
 
   // Editing
+  AIPlugin.withComponent(AILeaf),
+  aiChatPlugin,
   ...SlashKit,
   ...AutoformatKit,
   ...CursorOverlayKit,

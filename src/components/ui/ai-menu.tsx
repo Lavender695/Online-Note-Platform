@@ -299,7 +299,7 @@ const aiChatItems = {
       editor.getApi(AIChatPlugin).aiChat.submit(input, {
         mode: 'insert',
         prompt:
-          'Please comment on the following content and provide reasonable and meaningful feedback.',
+          '请基于以下内容给出具体、可执行的评论与反馈。请使用简体中文输出。',
         toolName: 'comment',
       });
     },
@@ -321,8 +321,8 @@ const aiChatItems = {
           ? `<Document>
 {editor}
 </Document>
-Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
-          : 'Continue writing AFTER <Block> ONLY ONE SENTENCE. DONT REPEAT THE TEXT.',
+请基于上面的文档内容续写一个新的自然段，只写一句话，不要重复已有内容，也不要输出任何 XML/HTML 标签。请使用简体中文。`
+          : '请在当前段落之后继续写一句话，不要重复已有文本，也不要输出任何 XML/HTML 标签。请使用简体中文。',
         toolName: 'generate',
       });
     },
@@ -343,7 +343,7 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     value: 'emojify',
     onSelect: ({ editor, input }) => {
       void editor.getApi(AIChatPlugin).aiChat.submit(input, {
-        prompt: 'Emojify',
+        prompt: '在不改变原意的前提下，适度加入 emoji，让表达更生动。请使用简体中文。',
         toolName: 'edit',
       });
     },
@@ -355,8 +355,8 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     onSelect: ({ editor, input }) => {
       void editor.getApi(AIChatPlugin).aiChat.submit(input, {
         prompt: {
-          default: 'Explain {editor}',
-          selecting: 'Explain',
+          default: '请解释以下内容：{editor}。请使用简体中文，说明关键点与背景。',
+          selecting: '请解释这段选中文本。请使用简体中文，说明关键点与背景。',
         },
         toolName: 'generate',
       });
@@ -368,7 +368,7 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     value: 'fixSpelling',
     onSelect: ({ editor, input }) => {
       void editor.getApi(AIChatPlugin).aiChat.submit(input, {
-        prompt: 'Fix spelling and grammar',
+        prompt: '请修正拼写与语法错误，保持原意不变。请使用简体中文。',
         toolName: 'edit',
       });
     },
@@ -379,7 +379,7 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     value: 'generateMarkdownSample',
     onSelect: ({ editor, input }) => {
       void editor.getApi(AIChatPlugin).aiChat.submit(input, {
-        prompt: 'Generate a markdown sample',
+        prompt: '请生成一个中文 Markdown 示例，包含标题、列表、引用和代码块。',
         toolName: 'generate',
       });
     },
@@ -390,7 +390,7 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     value: 'generateMdxSample',
     onSelect: ({ editor, input }) => {
       void editor.getApi(AIChatPlugin).aiChat.submit(input, {
-        prompt: 'Generate a mdx sample',
+        prompt: '请生成一个中文 MDX 示例，包含标题、段落、列表和一个简单组件示例。',
         toolName: 'generate',
       });
     },
@@ -401,7 +401,7 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     value: 'improveWriting',
     onSelect: ({ editor, input }) => {
       void editor.getApi(AIChatPlugin).aiChat.submit(input, {
-        prompt: 'Improve the writing',
+        prompt: '请润色这段内容，使其更清晰、专业、流畅。请使用简体中文。',
         toolName: 'edit',
       });
     },
@@ -423,7 +423,7 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     value: 'makeLonger',
     onSelect: ({ editor, input }) => {
       void editor.getApi(AIChatPlugin).aiChat.submit(input, {
-        prompt: 'Make longer',
+        prompt: '请在保持原意的前提下扩写这段内容，增加细节与信息量。请使用简体中文。',
         toolName: 'edit',
       });
     },
@@ -434,7 +434,7 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     value: 'makeShorter',
     onSelect: ({ editor, input }) => {
       void editor.getApi(AIChatPlugin).aiChat.submit(input, {
-        prompt: 'Make shorter',
+        prompt: '请在不丢失关键信息的前提下精简这段内容。请使用简体中文。',
         toolName: 'edit',
       });
     },
@@ -453,7 +453,7 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     value: 'simplifyLanguage',
     onSelect: ({ editor, input }) => {
       void editor.getApi(AIChatPlugin).aiChat.submit(input, {
-        prompt: 'Simplify the language',
+        prompt: '请将语言改写得更通俗易懂，适合普通读者。请使用简体中文。',
         toolName: 'edit',
       });
     },
@@ -466,8 +466,8 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
       void editor.getApi(AIChatPlugin).aiChat.submit(input, {
         mode: 'insert',
         prompt: {
-          default: 'Summarize {editor}',
-          selecting: 'Summarize',
+          default: '请总结以下内容：{editor}。请使用简体中文，输出简洁的要点摘要。',
+          selecting: '请总结这段选中文本。请使用简体中文，输出简洁的要点摘要。',
         },
         toolName: 'generate',
       });

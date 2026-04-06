@@ -17,10 +17,16 @@ import { useChat } from '../use-chat';
 import { CursorOverlayKit } from './cursor-overlay-kit';
 import { MarkdownKit } from './markdown-kit';
 
+const sanitizeAiOutput = (text: string) =>
+  text
+    .replace(/<\/?block>/gi, '')
+    .replace(/<\/?document>/gi, '')
+    .replace(/<\/?editor>/gi, '');
+
 export const aiChatPlugin = AIChatPlugin.extend({
   options: {
     chatOptions: {
-      api: '/api/ai/command',
+      api: '/api/chat',
       body: {},
     },
   },
@@ -37,6 +43,9 @@ export const aiChatPlugin = AIChatPlugin.extend({
     const toolName = usePluginOption(AIChatPlugin, 'toolName');
     useChatChunk({
       onChunk: ({ chunk, isFirst, nodes, text: content }) => {
+        const cleanChunk = sanitizeAiOutput(chunk);
+        const cleanContent = sanitizeAiOutput(content);
+
         if (isFirst && mode === 'insert') {
           editor.tf.withoutSaving(() => {
             editor.tf.insertNodes(
@@ -58,7 +67,7 @@ export const aiChatPlugin = AIChatPlugin.extend({
             () => {
               if (!getOption('streaming')) return;
               editor.tf.withScrolling(() => {
-                streamInsertChunk(editor, chunk, {
+                streamInsertChunk(editor, cleanChunk, {
                   textProps: {
                     [getPluginType(editor, KEYS.ai)]: true,
                   },
@@ -73,7 +82,7 @@ export const aiChatPlugin = AIChatPlugin.extend({
           withAIBatch(
             editor,
             () => {
-              applyAISuggestions(editor, content);
+              applyAISuggestions(editor, cleanContent);
             },
             {
               split: isFirst,
